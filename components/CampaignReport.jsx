@@ -32,7 +32,7 @@ import { rateTone } from "@/lib/health";
 import { PROVIDER_DOMAINS, PROVIDER_LABELS } from "@/lib/providers";
 import { UNSUBSCRIBE_PLACEHOLDER, renderEmail, withResponsiveImages } from "@/lib/render-email";
 
-export default function CampaignReport({ campaign, newsletter, providers, remainingCount = 0 }) {
+export default function CampaignReport({ campaign, newsletter, providers, links = [], remainingCount = 0 }) {
 	const { stats } = campaign;
 	const id = campaign._id.toString();
 	const isOnArchive = newsletter.archiveEnabled && Boolean(campaign.archiveSlug) && campaign.archiveListed !== false;
@@ -197,6 +197,42 @@ export default function CampaignReport({ campaign, newsletter, providers, remain
 										<TableCell className="pr-4 text-right">
 											{formatRate(row.complained, row.sent, 3) ?? <TextEmpty />}
 										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
+				)}
+
+				{links.length > 0 && (
+					<div
+						style={{ "--stagger": 2 }}
+						className="overflow-hidden rounded-xl shadow-border animate-enter"
+					>
+						<Table className="table-fixed">
+							<TableHeader>
+								<TableRow className="hover:bg-transparent">
+									<TableHead className="pl-4">Link</TableHead>
+									<TableHead className="w-24 text-right">Clicked</TableHead>
+									<TableHead className="w-24 pr-4 text-right">Of reached</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{links.map((row) => (
+									<TableRow key={row.url} className="tabular-nums">
+										<TableCell className="pl-4">
+											<a
+												href={row.url}
+												target="_blank"
+												rel="noreferrer"
+												title={row.url}
+												className="block truncate hover:underline"
+											>
+												{row.url.replace(/^https?:\/\/(www\.)?/, "")}
+											</a>
+										</TableCell>
+										<TableCell className="text-right">{formatNumber(row.clickers)}</TableCell>
+										<TableCell className="pr-4 text-right">{formatRate(row.clickers, reached) ?? <TextEmpty />}</TableCell>
 									</TableRow>
 								))}
 							</TableBody>

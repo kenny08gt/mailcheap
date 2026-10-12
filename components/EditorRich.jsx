@@ -14,7 +14,7 @@ import { IMAGE_TYPES, getDisplaySize, prepareImage, uploadImage } from "@/lib/up
 
 const MIN_HEIGHT = "min-h-[560px]";
 
-export default function EditorRich({ content, onChange }) {
+export default function EditorRich({ content, onChange, onReady }) {
 	const [isEditingLink, setIsEditingLink] = useState(false);
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -56,6 +56,7 @@ export default function EditorRich({ content, onChange }) {
 				return true;
 			},
 		},
+		onCreate: ({ editor: current }) => onReady?.(current),
 		onUpdate: ({ editor: current }) => onChange(current.getHTML()),
 	});
 

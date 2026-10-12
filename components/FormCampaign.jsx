@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { duplicateCampaign, saveCampaign, sendTestCampaign } from "@/app/(app)/campaigns/actions";
 import AvatarNewsletter from "@/components/AvatarNewsletter";
 import BadgeStatus from "@/components/BadgeStatus";
+import CardAssistant from "@/components/CardAssistant";
 import DialogDiscardCampaign from "@/components/DialogDiscardCampaign";
 import DialogScheduleCampaign from "@/components/DialogScheduleCampaign";
 import DialogSendCampaign from "@/components/DialogSendCampaign";
@@ -40,9 +41,11 @@ export default function FormCampaign({
 	testEmail,
 	sendTimes,
 	archiveUrlBase,
+	aiSpend,
 }) {
 	const isHtml = campaign.format === "html";
 	const [isDiscardOpen, setIsDiscardOpen] = useState(false);
+	const [editor, setEditor] = useState(null);
 	const format = isHtml ? "html" : "rich";
 	const [initialBody] = useState(() =>
 		campaign.format === "markdown" ? markdownToHtml(campaign.markdown) : campaign.html
@@ -137,6 +140,7 @@ export default function FormCampaign({
 	}
 
 	const updateBody = useCallback((body) => setValues((current) => ({ ...current, body })), []);
+	const applyDraft = useCallback((draft) => setValues((current) => ({ ...current, ...draft })), []);
 
 	const from = newsletter.fromName
 		? `${newsletter.fromName} <${newsletter.fromEmail}>`
@@ -270,7 +274,7 @@ export default function FormCampaign({
 							/>
 						</div>
 					) : (
-						<EditorRich content={initialBody} onChange={updateBody} />
+						<EditorRich content={initialBody} onChange={updateBody} onReady={setEditor} />
 					)}
 				</div>
 
@@ -279,6 +283,9 @@ export default function FormCampaign({
 					className="flex flex-col gap-4 animate-enter lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)]"
 				>
 					<ListChecks checks={checks} />
+					{aiSpend && !isHtml && (
+						<CardAssistant campaignId={campaign._id} editor={editor} initialSpend={aiSpend} onDraft={applyDraft} />
+					)}
 					<PreviewEmail
 						sender={newsletter}
 						subject={deferredValues.subject}

@@ -25,6 +25,8 @@ const messageSchema = new mongoose.Schema(
 		deliveredAt: Date,
 		openedAt: Date,
 		clickedAt: Date,
+		// Every link this contact clicked, once each, so a campaign's links count unique clickers.
+		clickedUrls: { type: [String], default: undefined },
 		bouncedAt: Date,
 		complainedAt: Date,
 	},

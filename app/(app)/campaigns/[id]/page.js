@@ -3,15 +3,15 @@ import { notFound } from "next/navigation";
 import CampaignReport from "@/components/CampaignReport";
 import FormCampaign from "@/components/FormCampaign";
 import { getArchiveUrls } from "@/lib/archive-hosts";
+import { getLinkClicks, getProviderBreakdowns } from "@/lib/campaign-engagement";
 import { sendTimesPipeline } from "@/lib/campaign-queries";
-import { isSendingEnabled } from "@/lib/config";
+import { getRecentAiSpend } from "@/lib/ai";
+import { isAiEnabled, isSendingEnabled } from "@/lib/config";
 import { connectDb } from "@/lib/db";
-import { MESSAGE_STATS_GROUP } from "@/lib/message-stats";
 import { serialize } from "@/lib/serialize";
 import { listSesDomains } from "@/lib/ses";
 import Campaign from "@/models/Campaign";
 import Contact from "@/models/Contact";
-import Message from "@/models/Message";
 import Newsletter from "@/models/Newsletter";
 
 export const metadata = { title: "Campaign" };
@@ -27,24 +27,27 @@ export default async function CampaignPage({ params }) {
 	if (!newsletter) notFound();
 
 	if (!["draft", "scheduled"].includes(campaign.status)) {
-		const [providers, remainingCount] = await Promise.all([
-			getProviderBreakdown(campaign._id),
+		const [providers, links, remainingCount] = await Promise.all([
+			getProviderBreakdowns([campaign._id]),
+			getLinkClicks([campaign._id]),
 			countRemaining(campaign),
 		]);
 		return (
 			<CampaignReport
 				campaign={serialize(campaign)}
 				newsletter={serialize(newsletter)}
-				providers={providers}
+				providers={providers.get(String(campaign._id))}
+				links={links.get(String(campaign._id))}
 				remainingCount={remainingCount}
 			/>
 		);
 	}
 
-	const [audienceCount, domains, sendTimes] = await Promise.all([
+	const [audienceCount, domains, sendTimes, aiSpend] = await Promise.all([
 		Contact.countDocuments({ newsletterId: newsletter._id, status: "active" }),
 		listSesDomains(),
 		getSendTimes(campaign),
+		isAiEnabled() ? getRecentAiSpend() : null,
 	]);
 	const fromDomain = newsletter.fromEmail.split("@")[1];
 	const isDomainVerified =
@@ -60,6 +63,7 @@ export default async function CampaignPage({ params }) {
 			testEmail={process.env.ADMIN_EMAIL}
 			sendTimes={sendTimes}
 			archiveUrlBase={newsletter.archiveEnabled ? getArchiveUrls(newsletter).absolutePost("") : null}
+			aiSpend={aiSpend}
 		/>
 	);
 }
@@ -83,13 +87,4 @@ async function countRemaining(campaign) {
 	const active = await Contact.countDocuments({ newsletterId: campaign.newsletterId, status: "active" });
 	const reached = (campaign.stats?.recipients ?? 0) + (campaign.lastChance?.recipients ?? 0);
 	return Math.max(0, active - reached);
-}
-
-async function getProviderBreakdown(campaignId) {
-	const rows = await Message.aggregate([
-		{ $match: { campaignId, kind: "campaign" } },
-		{ $group: { _id: { $ifNull: ["$provider", "other"] }, ...MESSAGE_STATS_GROUP } },
-		{ $sort: { sent: -1 } },
-	]);
-	return rows.filter(({ sent }) => sent > 0).map(({ _id, ...row }) => ({ provider: _id, ...row }));
 }
