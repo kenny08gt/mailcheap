@@ -49,7 +49,7 @@ test("recipient emails carry a personal unsubscribe link and one-click headers",
 	assert.ok(!email.html.includes(UNSUBSCRIBE_PLACEHOLDER));
 	assert.ok(!email.text.includes(UNSUBSCRIBE_PLACEHOLDER));
 	assert.ok(email.html.includes(`href="${email.unsubscribeUrl}"`));
-	assert.ok(email.text.includes(`Unsubscribe: ${email.unsubscribeUrl}`));
+	assert.ok(email.text.includes(`Cancelar suscripción: ${email.unsubscribeUrl}`));
 	assert.deepEqual(verifyUnsubscribeToken(token), {
 		contactId: contact._id,
 		newsletterId: newsletter._id,

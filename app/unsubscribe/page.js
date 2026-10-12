@@ -7,7 +7,7 @@ import Newsletter from "@/models/Newsletter";
 
 // The URL carries the unsubscribe token: keep it out of search results and referrer headers.
 export const metadata = {
-	title: "Unsubscribe",
+	title: "Cancelar suscripción",
 	robots: { index: false, follow: false },
 	referrer: "no-referrer",
 };
@@ -38,7 +38,7 @@ export default async function UnsubscribePage({ searchParams }) {
 					<form method="post" action={`/api/unsubscribe?token=${validToken}`} className="mt-6">
 						<input type="hidden" name="source" value="page" />
 						<Button type="submit" size="lg" className="w-full">
-							Unsubscribe
+							Cancelar suscripción
 						</Button>
 					</form>
 				)}
@@ -71,28 +71,28 @@ function getView({ reference, status, subscription }) {
 }
 
 function getCopy(view, newsletterName) {
-	const name = newsletterName || "this newsletter";
+	const name = newsletterName || "este boletín";
 	return {
 		invalid: {
 			icon: Link2Off,
-			title: "This link doesn't work",
+			title: "Este enlace no funciona",
 			description:
-				"Open the unsubscribe link from the email again, or reply to the email to ask to be removed.",
+				"Abre de nuevo el enlace para cancelar la suscripción desde el correo, o responde al correo para pedir que te quitemos de la lista.",
 		},
 		confirm: {
 			icon: MailX,
-			title: `Unsubscribe from ${name}?`,
-			description: "You'll stop receiving its emails.",
+			title: `¿Cancelar tu suscripción a ${name}?`,
+			description: "Dejarás de recibir sus correos.",
 		},
 		error: {
 			icon: CircleAlert,
-			title: "Something went wrong",
-			description: `You're still subscribed to ${name}. Try again in a minute.`,
+			title: "Algo salió mal",
+			description: `Sigues suscrito a ${name}. Inténtalo de nuevo en un minuto.`,
 		},
 		done: {
 			icon: MailCheck,
-			title: "You're unsubscribed",
-			description: `You won't receive emails from ${name} anymore.`,
+			title: "Cancelaste tu suscripción",
+			description: `Ya no recibirás correos de ${name}.`,
 		},
 	}[view];
 }

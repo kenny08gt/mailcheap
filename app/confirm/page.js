@@ -8,7 +8,7 @@ import Newsletter from "@/models/Newsletter";
 
 // The URL carries the confirmation token: keep it out of search results and referrer headers.
 export const metadata = {
-	title: "Confirm your subscription",
+	title: "Confirma tu suscripción",
 	robots: { index: false, follow: false },
 	referrer: "no-referrer",
 };
@@ -30,8 +30,8 @@ export default async function ConfirmPage({ searchParams }) {
 					archiveUrl={newsletter.archiveEnabled ? getArchiveUrls(newsletter).siteIndex : null}
 				/>
 			) : (
-				<CardNotice icon={Link2Off} title="This link doesn't work">
-					It may be older than 30 days. Sign up again and use the newest confirmation email.
+				<CardNotice icon={Link2Off} title="Este enlace no funciona">
+					Puede que tenga más de 30 días. Suscríbete de nuevo y usa el correo de confirmación más reciente.
 				</CardNotice>
 			)}
 		</main>

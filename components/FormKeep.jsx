@@ -17,11 +17,11 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 
 	if (state?.ok) {
 		return (
-			<CardNotice icon={MailCheck} tone="success" title={`You'll keep getting ${newsletterName}`}>
-				Thanks for letting me know. The next issue lands in your inbox.
+			<CardNotice icon={MailCheck} tone="success" title={`Seguirás recibiendo ${newsletterName}`}>
+				Gracias por avisarnos. El próximo envío llegará a tu bandeja.
 				{archiveUrl && (
 					<Button asChild size="lg" variant="outline" className="mt-6 w-full">
-						<a href={archiveUrl}>Read past issues</a>
+						<a href={archiveUrl}>Ver envíos anteriores</a>
 					</Button>
 				)}
 			</CardNotice>
@@ -30,11 +30,11 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 
 	if (state?.error === "invalid") {
 		return (
-			<CardNotice icon={Link2Off} title="This link doesn't work">
-				It may be older than 90 days, or you unsubscribed. Sign up again to get {newsletterName}.
+			<CardNotice icon={Link2Off} title="Este enlace no funciona">
+				Puede que tenga más de 90 días, o cancelaste tu suscripción. Suscríbete de nuevo para recibir {newsletterName}.
 				{archiveUrl && (
 					<Button asChild size="lg" variant="outline" className="mt-6 w-full">
-						<a href={archiveUrl}>Sign up again</a>
+						<a href={archiveUrl}>Suscribirme de nuevo</a>
 					</Button>
 				)}
 			</CardNotice>
@@ -45,14 +45,14 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 		<CardNotice
 			icon={isPending ? Loader2 : HeartHandshake}
 			spin={isPending}
-			title={`Keep getting ${newsletterName}?`}
+			title={`¿Seguir recibiendo ${newsletterName}?`}
 		>
 			{state?.error === "busy"
-				? "Too many clicks from your network. Try again in a few minutes."
-				: "One click and it keeps coming."}
+				? "Demasiados clics desde tu red. Inténtalo de nuevo en unos minutos."
+				: "Un clic y te lo seguimos enviando."}
 			<form ref={formRef} action={action} className="mt-6">
 				<Button type="submit" size="lg" disabled={isPending} className="w-full">
-					{isPending ? "Saving…" : "Yes, keep sending it"}
+					{isPending ? "Guardando…" : "Sí, sigan enviándolo"}
 				</Button>
 			</form>
 		</CardNotice>

@@ -43,7 +43,7 @@ test("keep, confirmation and unsubscribe links can't stand in for each other", (
 
 test("the last-chance email asks one question, with a clean button", () => {
 	const content = getLastChanceContent(NEWSLETTER);
-	assert.equal(content.subject, "Do you still want Field notes?");
+	assert.equal(content.subject, "¿Todavía quieres recibir Field notes?");
 	assert.ok(!/action required/i.test(`${content.subject} ${content.previewText} ${content.markdown}`));
 	assert.equal(content.markdown.match(/<a /g).length, 1, "one button");
 
@@ -57,7 +57,7 @@ test("the last-chance email asks one question, with a clean button", () => {
 	});
 	assert.equal(email.replyTo, "jane@example.com", "replies go to the newsletter's reply-to");
 	assert.ok(email.html.includes(`href="${keepUrl}"`));
-	assert.ok(email.text.includes(`Yes, keep sending it (${keepUrl})`));
+	assert.ok(email.text.includes(`Sí, sigan enviándolo (${keepUrl})`));
 	assert.ok(!email.html.includes(KEEP_URL_PLACEHOLDER) && !email.text.includes(KEEP_URL_PLACEHOLDER));
 	assert.ok(!email.html.includes("/c/") && !email.html.includes("/o/"), "no tracking redirect or pixel");
 	assert.ok(email.headers["List-Unsubscribe"].startsWith("<https://mailcheap.test/api/unsubscribe?token="));

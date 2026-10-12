@@ -33,7 +33,7 @@ test("unsubscribe and confirmation links can't stand in for each other", () => {
 
 test("the confirmation email carries a clean link in both versions", () => {
 	const content = getConfirmationContent({ name: "Field notes" });
-	assert.equal(content.subject, "Confirm your subscription to Field notes");
+	assert.equal(content.subject, "Confirma tu suscripción a Field notes");
 	assert.ok(content.markdown.includes(CONFIRM_URL_PLACEHOLDER));
 
 	const email = buildRecipientEmail({
@@ -44,7 +44,7 @@ test("the confirmation email carries a clean link in both versions", () => {
 		confirmUrl: "https://mailcheap.test/confirm?token=abc",
 	});
 	assert.ok(email.html.includes('href="https://mailcheap.test/confirm?token=abc"'));
-	assert.ok(email.text.includes("Confirm my subscription (https://mailcheap.test/confirm?token=abc)"));
+	assert.ok(email.text.includes("Confirmar mi suscripción (https://mailcheap.test/confirm?token=abc)"));
 	assert.ok(!email.html.includes("/c/") && !email.html.includes("/o/"), "no tracking redirect or pixel");
 	assert.ok(renderEmail(content).html.includes(CONFIRM_URL_PLACEHOLDER), "the link is filled per recipient");
 });

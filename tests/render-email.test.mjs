@@ -16,7 +16,7 @@ test("markdown emails get a footer with the unsubscribe placeholder and address"
 	assert.ok(html.includes(UNSUBSCRIBE_PLACEHOLDER));
 	assert.ok(html.includes("1 Main St, Paris"));
 	assert.ok(text.includes("link (https://example.com)"));
-	assert.ok(text.includes(`Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`));
+	assert.ok(text.includes(`Cancelar suscripción: ${UNSUBSCRIBE_PLACEHOLDER}`));
 	assert.ok(bytes > 0);
 });
 
