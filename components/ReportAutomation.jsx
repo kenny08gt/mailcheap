@@ -2,6 +2,7 @@ import BadgeStatus from "@/components/BadgeStatus";
 import TextEmpty from "@/components/TextEmpty";
 import TimeLocal from "@/components/TimeLocal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { findPosition } from "@/lib/automation-steps";
 import { formatNumber, formatRate } from "@/lib/format";
 
 const STARTED_FORMAT = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
@@ -78,7 +79,7 @@ export default function ReportAutomation({ steps, stepStats, runs }) {
 											<span className="block truncate">{run.email ?? "Deleted contact"}</span>
 										</TableCell>
 										<TableCell className="tabular-nums">
-											{run.status === "active" ? `Step ${getStepNumber(steps, run)}` : <TextEmpty />}
+											{run.status === "active" ? `Step ${findPosition(steps, run.stepId, run.stepIndex) + 1}` : <TextEmpty />}
 										</TableCell>
 										<TableCell>
 											<BadgeStatus status={run.status} />
@@ -96,12 +97,6 @@ export default function ReportAutomation({ steps, stepStats, runs }) {
 			</div>
 		</section>
 	);
-}
-
-// The run's place is its step id; the saved index only covers a step deleted since.
-function getStepNumber(steps, run) {
-	const index = steps.findIndex(({ id }) => id === run.stepId);
-	return (index === -1 ? run.stepIndex : index) + 1;
 }
 
 function Count({ count, total }) {

@@ -35,17 +35,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CONTACT_ACTIVE, readEventName } from "@/lib/automation-rules";
+import { newStepId } from "@/lib/automation-steps";
 import { getSavedLinks } from "@/lib/brand-links";
 import { useAutosave } from "@/lib/use-autosave";
 
 const DEFAULT_COOLDOWN_DAYS = 7;
 const NEW_WAIT_HOURS = 24;
 const LOCKED_HINT = "Pause to add or remove steps";
-
-// Runs in the browser, where node:crypto isn't available (lib/automation-steps.js newStepId is for the server).
-export function newClientStepId() {
-	return Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
 
 export default function FormAutomation({ automation, newsletter, isSendingEnabled, testEmail, report }) {
 	const router = useRouter();
@@ -303,7 +299,7 @@ function AddStep({ isLocked, onAdd }) {
 				size="sm"
 				disabled={isLocked}
 				title={isLocked ? LOCKED_HINT : undefined}
-				onClick={() => onAdd({ id: newClientStepId(), type: "wait", hours: NEW_WAIT_HOURS })}
+				onClick={() => onAdd({ id: newStepId(), type: "wait", hours: NEW_WAIT_HOURS })}
 			>
 				<Clock data-icon="inline-start" />
 				Wait
@@ -313,7 +309,7 @@ function AddStep({ isLocked, onAdd }) {
 				size="sm"
 				disabled={isLocked}
 				title={isLocked ? LOCKED_HINT : undefined}
-				onClick={() => onAdd({ id: newClientStepId(), type: "email", subject: "", previewText: "", html: "" })}
+				onClick={() => onAdd({ id: newStepId(), type: "email", subject: "", previewText: "", html: "" })}
 			>
 				<Mail data-icon="inline-start" />
 				Email
@@ -322,7 +318,6 @@ function AddStep({ isLocked, onAdd }) {
 	);
 }
 
-// Event names become chips on Enter or comma.
 function InputEvents({ events, onChange }) {
 	const [text, setText] = useState("");
 
