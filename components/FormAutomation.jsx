@@ -59,6 +59,10 @@ export default function FormAutomation({ automation, newsletter, isSendingEnable
 	});
 	const save = useCallback((snapshot) => saveAutomation(automation._id, snapshot), [automation._id]);
 	const { isDirty, isSaving, error, flush } = useAutosave(values, save);
+	// A running automation refuses edits that activation would refuse, and the header alone is easy to miss.
+	useEffect(() => {
+		if (error) toast.error(error, { id: "automation-save" });
+	}, [error]);
 	const [isChangingStatus, startChangingStatus] = useTransition();
 	const savedLinks = useMemo(() => getSavedLinks(newsletter), [newsletter]);
 	const isActive = status === "active";

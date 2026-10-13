@@ -57,7 +57,7 @@ export async function saveAutomation(id, values) {
 	if (input.error) return { error: input.error };
 	if (automation.status === "active") {
 		const problem = await findSendProblem({ ...automation, ...input.automation });
-		if (problem) return { error: `${problem}, or pause the automation first` };
+		if (problem) return { error: `${problem.replace(/\.$/, "")}, or pause the automation first` };
 	}
 
 	await Automation.updateOne({ _id: automation._id }, { $set: input.automation });
@@ -110,6 +110,7 @@ export async function deleteAutomation(id) {
 	}
 
 	await Automation.deleteOne({ _id: automation._id });
+	await Enrollment.deleteMany({ automationId: automation._id });
 	revalidatePath("/automations");
 	redirect("/automations");
 }
