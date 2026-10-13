@@ -29,6 +29,7 @@ Mailcheap is the rest of what a newsletter needs, in one small Next.js app: an e
 - Several newsletters in one install, each with its own from address, reply-to and postal address.
 - A signup form on each newsletter's archive, and a signup API with API keys.
 - Confirmed opt-in per newsletter, off by default. Welcome email.
+- Automations: email sequences that start when someone joins or when your app sends an event, wait between emails, and stop on the events you choose (an abandoned checkout that ends when the order is paid, for example).
 - Rate limits on signups, login, unsubscribes and the API, on by default.
 
 **Keep it healthy**
@@ -209,6 +210,7 @@ A local MongoDB works: `docker run -d -p 27017:27017 mongo` and `MONGODB_URI=mon
 | `BLOB_READ_WRITE_TOKEN` | No | Image uploads in the editor (set by Vercel Blob) |
 | `UPLOAD_DIR`, `UPLOAD_PUBLIC_URL` | No | Image uploads on the server's disk, served by your web server (default URL `APP_URL/uploads`) |
 | `ALERT_FROM` | No | From address for alert emails, on a verified domain |
+| `CRON_SECRET` | For automations | Bearer secret for `/api/jobs/automations-tick`, which a timer calls every 5 minutes |
 
 [`.env.example`](.env.example) has the same list with more detail.
 
@@ -228,17 +230,55 @@ curl -X POST https://<your-app>/api/v1/contacts \
 - `newsletter` (slug) and `email` are required. `source` labels where the signup came from.
 - `resubscribe: true` brings back someone who unsubscribed (never someone who bounced or complained).
 - Pass your visitor's IP as `ip` to get the per-visitor limit of 5 signups per 10 minutes. Each key is also limited to 600 signups an hour.
+- `properties` (optional) is a flat object of strings, numbers and booleans that the newsletter's "joins the list" automations can use as variables, like `{"name":"Jane"}`.
 - Answers `201` for a new contact, `200` if it already existed, with `{ id, status, created }`. When the newsletter confirms signups, `status` is `pending` and `inbox` links to the reader's email provider for your "check your inbox" message.
+
+**Send an event**: `POST /api/v1/events`
+
+```bash
+curl -X POST https://<your-app>/api/v1/events \
+  -H "Authorization: Bearer $MAILCHEAP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"newsletter":"hosts","email":"jane@example.com","event":"plan_checkout_started","properties":{"plan":"Pro","checkout_url":"https://example.com/checkout/123"}}'
+```
+
+- `event` is lowercase letters, digits and `_`, up to 50 characters. `contact_active` is reserved.
+- `properties` is optional: up to 20 keys, values are strings (500 characters at most, no line breaks), numbers or booleans.
+- The event ends the contact's runs in automations that exit on it, then starts the automations it triggers.
+- It only acts on contacts already in the newsletter and never adds one. Answers `{ matched, started, exited }`, with `matched: false` for an unknown address.
 
 **Create a draft**: `POST /api/v1/campaigns` with `newsletter`, `subject`, `previewText` (optional), `html` or `markdown`, and `archiveSlug` (optional). Answers `201` with the draft's id and dashboard URL. Sending stays a click in the dashboard.
 
 **List sent issues**: `GET /api/v1/campaigns?newsletter=<slug>` returns each issue's id, subject, preview text, archive URL and send date.
+
+## Automations
+
+An automation belongs to one newsletter. It has a trigger, a list of steps, exit events and a re-entry rule.
+
+- **Trigger.** "Joins the list" (`contact_active`) fires when a contact becomes active through the archive signup form, the confirmation link or `POST /api/v1/contacts`. CSV imports and contacts added in the dashboard don't fire it, so importing an existing list sends nothing. Any other trigger is an event name sent to `POST /api/v1/events`.
+- **Steps.** Emails and waits, in order. Edits apply to people already in the automation. While it's active you can edit the text of steps; pause it to add, remove or reorder them.
+- **Exit events.** Any of these events ends the contact's run, and emails it had queued but not sent are dropped.
+- **Re-entry.** Once per contact, or again after a number of days.
+- **Variables.** Subjects, preview text and email bodies can use `{{key}}` or `{{key|fallback}}`, filled from the triggering event's properties, plus `{{email}}`. A link or button can point at a variable like `{{checkout_url}}`, which is used only when it's an `https://` URL.
+- Only active contacts get automation emails. A run ends when its contact unsubscribes, bounces, complains or goes dormant.
+- Automation emails share the 100 per 10 minutes cap with welcome and confirmation emails. Over the cap they wait for the next tick. An automation pauses itself, with an alert, when its last 30 days pass the bounce or complaint limits.
+- Properties sent with a signup to a newsletter that confirms signups are not kept for the "joins the list" automations.
+
+The automations move forward when `/api/jobs/automations-tick` is called with `Authorization: Bearer $CRON_SECRET`. On a server with systemd, [`deploy/systemd`](deploy/systemd) has a timer that calls it every 5 minutes:
+
+```bash
+sudo cp deploy/systemd/mailcheap-automations.* /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now mailcheap-automations.timer
+```
+
+The service reads `CRON_SECRET` from `/etc/mailcheap/mailcheap.env` and calls `http://127.0.0.1:3000`. Change both in the unit file for another setup. The Automations page warns when the timer hasn't run in 30 minutes.
 
 ## How it works
 
 - Next.js App Router, JavaScript, Tailwind CSS with shadcn/ui, MongoDB through Mongoose.
 - **Send** picks the audience (active contacts, suppressions left out, most engaged first), creates one message per reader, and queues one QStash job per batch of 50. Each job sends through the SES v2 API at `SEND_RATE_PER_SECOND` and pauses the campaign if bounce or complaint rates pass the limits.
 - Welcome and confirmation emails go out right away, capped at 100 every 10 minutes per newsletter.
+- Each automation tick claims due runs, queues their emails, and sends them through the same batch sender as campaigns, so suppressions, tracking and UTM tags apply.
 - SES publishes events to SNS, which posts them to `/api/webhooks/ses`. Mailcheap verifies the SNS signature, updates the message, the campaign stats and the contact, and suppresses bounced and complaining addresses for every newsletter.
 - Opens and clicks go through `/o/...` and `/c/...` on your app's domain. Clicks within 30 seconds of the send, or from known link scanners, don't count.
 - Archive pages are static and refresh when you send or save.
