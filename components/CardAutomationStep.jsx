@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { listVariables } from "@/lib/automation-variables";
 
 const HOURS_PER_DAY = 24;
-const TEST_FILLED = "email";
+const FILLED_FROM_TEST_ADDRESS = "email";
 
 export default function CardAutomationStep({
 	step,
@@ -179,7 +179,7 @@ function DialogTest({ step, isSendingEnabled, onTest }) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [samples, setSamples] = useState({});
 	const [isTesting, startTesting] = useTransition();
-	const keys = listVariables([step.subject, step.previewText, step.html]).filter((key) => key !== TEST_FILLED);
+	const keys = listVariables([step.subject, step.previewText, step.html]).filter((key) => key !== FILLED_FROM_TEST_ADDRESS);
 
 	function send(event) {
 		event.preventDefault();

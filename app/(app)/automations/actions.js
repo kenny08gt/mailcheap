@@ -26,7 +26,7 @@ function revalidate(id) {
 	revalidatePath(`/automations/${id}`);
 }
 
-async function findActivationProblem(automation) {
+async function findSendProblem(automation) {
 	const problem = getAutomationProblem(automation);
 	if (problem) return problem;
 	const newsletter = await Newsletter.findById(automation.newsletterId).lean();
@@ -56,7 +56,7 @@ export async function saveAutomation(id, values) {
 	const input = readAutomationInput(values);
 	if (input.error) return { error: input.error };
 	if (automation.status === "active") {
-		const problem = await findActivationProblem({ ...automation, ...input.automation });
+		const problem = await findSendProblem({ ...automation, ...input.automation });
 		if (problem) return { error: `${problem}, or pause the automation first` };
 	}
 
@@ -71,7 +71,7 @@ export async function setAutomationStatus(id, status) {
 	if (!["active", "paused"].includes(status)) return { error: "Unknown status" };
 
 	if (status === "active") {
-		const problem = await findActivationProblem(automation);
+		const problem = await findSendProblem(automation);
 		if (problem) return { error: problem };
 	}
 
