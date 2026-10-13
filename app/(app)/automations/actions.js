@@ -26,6 +26,21 @@ function revalidate(id) {
 	revalidatePath(`/automations/${id}`);
 }
 
+// What a campaign would be refused for, checked on every email step. Saves to a running automation
+// go through it too, or an edit could put an email in it that activation would have refused.
+async function findActivationProblem(automation) {
+	const problem = getAutomationProblem(automation);
+	if (problem) return problem;
+	const newsletter = await Newsletter.findById(automation.newsletterId).lean();
+	for (const [index, step] of automation.steps.entries()) {
+		if (step.type !== "email") continue;
+		const content = buildAutomationContent({ automation, step, properties: {}, email: newsletter.fromEmail });
+		const sendProblem = getSendProblem({ campaign: content, newsletter });
+		if (sendProblem) return `Step ${index + 1}: ${sendProblem}`;
+	}
+	return null;
+}
+
 export async function createAutomation(newsletterId) {
 	await requireSession();
 	if (!isValidObjectId(newsletterId)) return { error: "Newsletter not found" };
@@ -44,7 +59,7 @@ export async function saveAutomation(id, values) {
 	const input = readAutomationInput(values);
 	if (input.error) return { error: input.error };
 	if (automation.status === "active") {
-		const problem = getAutomationProblem(input.automation);
+		const problem = await findActivationProblem({ ...automation, ...input.automation });
 		if (problem) return { error: `${problem}, or pause the automation first` };
 	}
 
@@ -59,15 +74,8 @@ export async function setAutomationStatus(id, status) {
 	if (!["active", "paused"].includes(status)) return { error: "Unknown status" };
 
 	if (status === "active") {
-		const problem = getAutomationProblem(automation);
+		const problem = await findActivationProblem(automation);
 		if (problem) return { error: problem };
-		const newsletter = await Newsletter.findById(automation.newsletterId).lean();
-		for (const [index, step] of automation.steps.entries()) {
-			if (step.type !== "email") continue;
-			const content = buildAutomationContent({ automation, step, properties: {}, email: newsletter.fromEmail });
-			const sendProblem = getSendProblem({ campaign: content, newsletter });
-			if (sendProblem) return { error: `Step ${index + 1}: ${sendProblem}` };
-		}
 	}
 
 	await Automation.updateOne({ _id: automation._id }, { $set: { status } });

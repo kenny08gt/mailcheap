@@ -79,7 +79,7 @@ export default function ReportAutomation({ steps, stepStats, runs }) {
 											<span className="block truncate">{run.email ?? "Deleted contact"}</span>
 										</TableCell>
 										<TableCell className="tabular-nums">
-											{run.status === "active" ? `Step ${findPosition(steps, run.stepId, run.stepIndex) + 1}` : <TextEmpty />}
+											{run.status === "active" ? formatRunStep(steps, run) : <TextEmpty />}
 										</TableCell>
 										<TableCell>
 											<BadgeStatus status={run.status} />
@@ -107,4 +107,10 @@ function Count({ count, total }) {
 			{rate && <span className="ml-1.5 text-xs text-muted-foreground">{rate}</span>}
 		</>
 	);
+}
+
+// A run whose last step is a wait sits past the end until that wait is over.
+function formatRunStep(steps, run) {
+	const position = findPosition(steps, run.stepId, run.stepIndex);
+	return position < steps.length ? `Step ${position + 1}` : "Last wait";
 }
