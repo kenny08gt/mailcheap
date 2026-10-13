@@ -61,6 +61,18 @@ test("recipient emails carry a personal unsubscribe link and one-click headers",
 	assert.equal(email.bytes, Buffer.byteLength(email.html));
 });
 
+test("sent footer icons load from the app's absolute URL, and their profile links are click-tracked", () => {
+	const email = buildRecipientEmail({
+		campaign,
+		newsletter: { ...newsletter, socialLinks: ["https://www.instagram.com/fieldnotes"], footerSocial: { enabled: true } },
+		contact,
+		messageId: "84f1a2b3c4d5e6f7a8b9c0d3",
+	});
+	assert.ok(email.html.includes('<img src="https://mail.example.com/i/social/instagram?c=71717a" alt="Instagram"'));
+	assert.ok(!email.html.includes('href="https://www.instagram.com/fieldnotes"'));
+	assert.ok(email.text.includes("Síguenos: Instagram https://www.instagram.com/fieldnotes"));
+});
+
 test("custom HTML keeps its own unsubscribe link, filled in per recipient", () => {
 	const html = `<html><body><p>Issue</p><a href="${UNSUBSCRIBE_PLACEHOLDER}">Leave</a></body></html>`;
 	const email = buildRecipientEmail({

@@ -13,7 +13,7 @@ import { connectDb } from "@/lib/db";
 import { THEME_COLORS, parseTheme } from "@/lib/email-theme";
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { sendWelcomeTestEmail } from "@/lib/sending";
-import { parseSocialLinks } from "@/lib/social";
+import { MAX_FOOTER_SOCIAL_TEXT_LENGTH, parseSocialLinks } from "@/lib/social";
 import { parseUtmDomains } from "@/lib/utm";
 import Newsletter from "@/models/Newsletter";
 
@@ -48,6 +48,7 @@ function readNewsletter(formData) {
 		description: readText(formData, "description"),
 		author: { bio: readText(formData, "authorBio"), imageUrl: readText(formData, "authorImageUrl") },
 		socialLinks: parseSocialLinks(formData.get("socialLinks")),
+		footerSocial: { enabled: formData.get("footerSocialEnabled") === "on", text: readText(formData, "footerSocialText") },
 		websiteUrl: readText(formData, "websiteUrl"),
 		headerImageUrl: readText(formData, "headerImageUrl"),
 		theme: parseTheme(Object.fromEntries(THEME_COLORS.map(({ key }) => [key, readText(formData, `theme.${key}`)]))),
@@ -91,6 +92,9 @@ function validateNewsletter(values) {
 		return "Author photo must be an https:// link or a path like /authors/name.jpg";
 	}
 	if (values.socialLinks.error) return values.socialLinks.error;
+	if (values.footerSocial.text.length > MAX_FOOTER_SOCIAL_TEXT_LENGTH) {
+		return `Keep the social links line under ${MAX_FOOTER_SOCIAL_TEXT_LENGTH} characters`;
+	}
 	if (values.websiteUrl && !isHttpsUrl(values.websiteUrl)) return "Website must be an https:// link";
 	if (values.headerImageUrl && !isHttpsUrl(values.headerImageUrl)) return "Header image must be an https:// link";
 	if (values.theme.error) return values.theme.error;

@@ -19,6 +19,7 @@ import { KEEP_URL_PLACEHOLDER, getLastChanceContent } from "@/lib/last-chance-co
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { UNSUBSCRIBE_PLACEHOLDER, renderEmail } from "@/lib/render-email";
 import { slugify } from "@/lib/slug";
+import { DEFAULT_FOOTER_SOCIAL_TEXT, MAX_FOOTER_SOCIAL_TEXT_LENGTH, parseSocialLinks } from "@/lib/social";
 import { IMAGE_TYPES, prepareImage, uploadImage } from "@/lib/upload-image";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,11 @@ export default function FormNewsletter({
 	const [theme, setTheme] = useState(() =>
 		Object.fromEntries(THEME_COLORS.map(({ key }) => [key, newsletter?.theme?.[key] ?? ""]))
 	);
+	const [socialLinks, setSocialLinks] = useState(newsletter?.socialLinks?.join("\n") ?? "");
+	const [footerSocial, setFooterSocial] = useState({
+		enabled: Boolean(newsletter?.footerSocial?.enabled),
+		text: newsletter?.footerSocial?.text ?? "",
+	});
 	const [isUtmEnabled, setIsUtmEnabled] = useState(Boolean(newsletter?.utm?.enabled));
 	const [isConfirmationRequired, setIsConfirmationRequired] = useState(Boolean(newsletter?.requireConfirmation));
 	const [confirmationEdits, setConfirmationEdits] = useState(null);
@@ -68,7 +74,8 @@ export default function FormNewsletter({
 	}, [state]);
 
 	const previewImageUrl = IMAGE_PREVIEW_PATTERN.test(imageUrl) ? imageUrl : "";
-	// Every email shows the banner and colors, so the previews follow the fields as they're edited.
+	const previewSocialLinks = useDeferredValue(socialLinks);
+	// Every email shows the banner, colors and social links, so the previews follow the fields as they're edited.
 	const previewNewsletter = useMemo(
 		() => ({
 			name,
@@ -77,8 +84,10 @@ export default function FormNewsletter({
 			headerImageUrl: isHttpsUrl(headerImageUrl) ? headerImageUrl : "",
 			websiteUrl: isHttpsUrl(websiteUrl) ? websiteUrl : "",
 			theme,
+			socialLinks: parseSocialLinks(previewSocialLinks).links ?? [],
+			footerSocial,
 		}),
-		[name, previewImageUrl, newsletter?.postalAddress, headerImageUrl, websiteUrl, theme]
+		[name, previewImageUrl, newsletter?.postalAddress, headerImageUrl, websiteUrl, theme, previewSocialLinks, footerSocial]
 	);
 
 	const welcomeHtml = useMemo(
@@ -596,10 +605,31 @@ export default function FormNewsletter({
 				<Field label="Social links" hint="One link per line">
 					<Textarea
 						name="socialLinks"
-						defaultValue={newsletter?.socialLinks?.join("\n")}
+						value={socialLinks}
+						onChange={(event) => setSocialLinks(event.target.value)}
 						rows={3}
 						placeholder={"https://x.com/example\nhttps://youtube.com/@example"}
 						className="font-mono text-[13px] leading-6"
+					/>
+				</Field>
+				<Field label="In emails" hint="As icons above the unsubscribe line, inviting readers to follow">
+					<span className="flex items-center gap-3 sm:pt-1.5">
+						<Switch
+							name="footerSocialEnabled"
+							checked={footerSocial.enabled}
+							onCheckedChange={(enabled) => setFooterSocial((current) => ({ ...current, enabled }))}
+							aria-label="Show social links in the email footer"
+						/>
+						<span className="text-sm">Show social links in the email footer</span>
+					</span>
+				</Field>
+				<Field label="Footer line" hint="Above the icons. Links to sites other than the social networks Mailcheap knows are left out.">
+					<Input
+						name="footerSocialText"
+						value={footerSocial.text}
+						onChange={(event) => setFooterSocial((current) => ({ ...current, text: event.target.value }))}
+						maxLength={MAX_FOOTER_SOCIAL_TEXT_LENGTH}
+						placeholder={DEFAULT_FOOTER_SOCIAL_TEXT}
 					/>
 				</Field>
 			</Section>

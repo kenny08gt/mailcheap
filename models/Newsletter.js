@@ -12,6 +12,11 @@ const newsletterSchema = new mongoose.Schema(
 		archiveEnabled: { type: Boolean, default: false },
 		description: { type: String, trim: true },
 		socialLinks: [{ type: String, trim: true }],
+		// The email footer shows the known social links as icons under this line (lib/social.js).
+		footerSocial: {
+			enabled: { type: Boolean, default: false },
+			text: { type: String, trim: true },
+		},
 		// The "home" link: the banner points at it, and the editor and AI assistant offer it first.
 		websiteUrl: { type: String, trim: true },
 		// Banner at the top of every email.
