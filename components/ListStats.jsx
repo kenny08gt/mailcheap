@@ -11,38 +11,75 @@ import { cn } from "@/lib/utils";
 export default function ListStats({ current, previous }) {
 	const reached = current.delivered || current.sent;
 	const previousReached = previous.delivered || previous.sent;
-	const rate = (key, total, previousTotal, digits = 1) => ({
+	const rate = (key, total, previousTotal, digits) => rateStat(current, previous, key, total, previousTotal, digits);
+
+	return (
+		<GridStats
+			stats={[
+				countStat("Sent", current.sent, previous.sent),
+				{ label: "Delivered", ...rate("delivered", current.sent, previous.sent), higherIsBetter: true },
+				{ label: "Opened", ...rate("opened", reached, previousReached), higherIsBetter: true },
+				{ label: "Clicked", ...rate("clicked", reached, previousReached), higherIsBetter: true },
+				{
+					label: "Bounced",
+					...rate("bounced", current.sent, previous.sent, 2),
+					tone: rateTone(current.bounced, current.sent, LIMITS.bounceRate),
+				},
+				{
+					label: "Complaints",
+					...rate("complained", current.sent, previous.sent, 3),
+					tone: rateTone(current.complained, current.sent, LIMITS.complaintRate),
+				},
+			]}
+		/>
+	);
+}
+
+// The automation emails and runs of a period (lib/automation-stats.js), opens and clicks out of the
+// emails sent, as the automation report counts them.
+export function ListAutomationStats({ current, previous }) {
+	const rate = (key, total, previousTotal) => rateStat(current, previous, key, total, previousTotal);
+
+	return (
+		<GridStats
+			stats={[
+				countStat("Emails sent", current.sent, previous.sent),
+				{ label: "Opened", ...rate("opened", current.sent, previous.sent), higherIsBetter: true },
+				{ label: "Clicked", ...rate("clicked", current.sent, previous.sent), higherIsBetter: true },
+				countStat("Runs started", current.started, previous.started),
+				countStat("Runs ended", current.ended, previous.ended),
+				{
+					label: "Goal reached",
+					...rate("goalReached", current.goalEnded, previous.goalEnded),
+					higherIsBetter: true,
+				},
+			]}
+		/>
+	);
+}
+
+function countStat(label, current, previous) {
+	return {
+		label,
+		value: formatCompact(current),
+		title: formatNumber(current),
+		previousValue: formatNumber(previous),
+		change: compareCount(current, previous),
+		digits: 0,
+		isCount: true,
+	};
+}
+
+function rateStat(current, previous, key, total, previousTotal, digits = 1) {
+	return {
 		value: formatRate(current[key], total, digits),
 		previousValue: formatRate(previous[key], previousTotal, digits),
 		change: compareRate(current[key], total, previous[key], previousTotal),
 		digits,
-	});
+	};
+}
 
-	const stats = [
-		{
-			label: "Sent",
-			value: formatCompact(current.sent),
-			title: formatNumber(current.sent),
-			previousValue: formatNumber(previous.sent),
-			change: compareCount(current.sent, previous.sent),
-			digits: 0,
-			isCount: true,
-		},
-		{ label: "Delivered", ...rate("delivered", current.sent, previous.sent), higherIsBetter: true },
-		{ label: "Opened", ...rate("opened", reached, previousReached), higherIsBetter: true },
-		{ label: "Clicked", ...rate("clicked", reached, previousReached), higherIsBetter: true },
-		{
-			label: "Bounced",
-			...rate("bounced", current.sent, previous.sent, 2),
-			tone: rateTone(current.bounced, current.sent, LIMITS.bounceRate),
-		},
-		{
-			label: "Complaints",
-			...rate("complained", current.sent, previous.sent, 3),
-			tone: rateTone(current.complained, current.sent, LIMITS.complaintRate),
-		},
-	];
-
+function GridStats({ stats }) {
 	return (
 		<dl className="grid grid-cols-3 gap-px bg-border/60 lg:grid-cols-6">
 			{stats.map(({ label, value, title, previousValue, change, digits, isCount, higherIsBetter, tone = "default" }) => {

@@ -1,5 +1,6 @@
 import SkeletonCampaigns from "@/components/SkeletonCampaigns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PERIOD_DAYS } from "@/lib/overview-series";
 import { cn } from "@/lib/utils";
 
@@ -103,6 +104,53 @@ export function SkeletonSends() {
 	);
 }
 
+// TableAutomations and its stats while they load.
+export function SkeletonAutomations({ rows = 3 }) {
+	return (
+		<div aria-hidden="true" className="flex flex-col gap-3">
+			<div className="overflow-hidden rounded-2xl bg-card shadow-border">
+				<SkeletonStats />
+			</div>
+			<div className="overflow-hidden rounded-xl shadow-border">
+				<Table>
+					<TableHeader>
+						<TableRow className="hover:bg-transparent">
+							<TableHead className="pl-4">Name</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead className="hidden text-right sm:table-cell">In progress</TableHead>
+							<TableHead className="hidden text-right md:table-cell">Started</TableHead>
+							<TableHead className="hidden text-right md:table-cell">Sent</TableHead>
+							<TableHead className="hidden text-right md:table-cell">Opens</TableHead>
+							<TableHead className="hidden text-right md:table-cell">Clicks</TableHead>
+							<TableHead className="hidden pr-4 text-right md:table-cell">Goal reached</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{Array.from({ length: rows }, (_, index) => (
+							<TableRow key={index} className="hover:bg-transparent">
+								<TableCell className="w-full max-w-0 py-3 pl-4 sm:w-1/3">
+									<Line height="h-5" className="h-3.5" style={{ width: `${NAME_WIDTHS[index % NAME_WIDTHS.length]}%` }} />
+								</TableCell>
+								<TableCell>
+									<Skeleton className="h-6 w-14 rounded-full" />
+								</TableCell>
+								<TableCell className="hidden sm:table-cell">
+									<Skeleton className="ml-auto h-3 w-8" />
+								</TableCell>
+								{["w-8", "w-10", "w-10", "w-9", "w-10"].map((width, column) => (
+									<TableCell key={column} className={cn("hidden md:table-cell", column === 4 && "pr-4")}>
+										<Skeleton className={cn("ml-auto h-3", width)} />
+									</TableCell>
+								))}
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+		</div>
+	);
+}
+
 export function SkeletonDomainList({ rows = 3 }) {
 	return (
 		<ul aria-hidden="true" className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card shadow-border">
@@ -178,4 +226,5 @@ function ChartSkeleton({ className, children }) {
 	);
 }
 
+const NAME_WIDTHS = [64, 48, 56];
 const BAR_HEIGHTS = [8, 6, 5, 4, 4, 6, 12, 24, 38, 46, 42, 36, 30, 34, 40, 44, 38, 30, 26, 22, 18, 14, 12, 10];

@@ -8,9 +8,10 @@ import ChartSends from "@/components/ChartSends";
 import ChartSubscribers from "@/components/ChartSubscribers";
 import CookieTimezone from "@/components/CookieTimezone";
 import ListDomainStatus from "@/components/ListDomainStatus";
-import ListStats from "@/components/ListStats";
+import ListStats, { ListAutomationStats } from "@/components/ListStats";
 import SkeletonCampaigns from "@/components/SkeletonCampaigns";
 import {
+	SkeletonAutomations,
 	SkeletonDomainList,
 	SkeletonSends,
 	SkeletonSesAccount,
@@ -19,6 +20,7 @@ import {
 } from "@/components/SkeletonOverview";
 import StateEmpty from "@/components/StateEmpty";
 import SwatchChart from "@/components/SwatchChart";
+import TableAutomations from "@/components/TableAutomations";
 import TableCampaigns from "@/components/TableCampaigns";
 import TabsNewsletter from "@/components/TabsNewsletter";
 import { Button } from "@/components/ui/button";
@@ -27,22 +29,27 @@ import { listNewslettersWithActiveCounts } from "@/lib/contacts";
 import { connectDb } from "@/lib/db";
 import { formatCompact, formatNumber, formatSigned } from "@/lib/format";
 import { NEWSLETTER_SUMMARY_FIELDS, toNewsletterMap, toNewsletterOptions } from "@/lib/newsletters";
-import { getEmailStats, getHourlySends, getSubscriberHistory } from "@/lib/overview-data";
+import { getAutomationStats, getEmailStats, getHourlySends, getSubscriberHistory } from "@/lib/overview-data";
 import { PERIOD_DAYS } from "@/lib/overview-series";
 import { getSesAccount, listSesDomains } from "@/lib/ses";
 import { TIME_ZONE_COOKIE, resolveTimeZone, timeZoneLabel } from "@/lib/time-zone";
 import { cn } from "@/lib/utils";
+import Automation from "@/models/Automation";
 import Campaign from "@/models/Campaign";
 
 // Everything above Domains is about one newsletter, the largest unless ?newsletter= picks one. The page
-// waits for one query (the tabs); every section then loads on its own behind a skeleton of its size.
+// waits for one round trip (the tabs, and which newsletters have automations); every section then loads on its own behind a skeleton of its size.
 export default async function OverviewPage({ searchParams }) {
 	const [{ newsletter: newsletterParam }, cookieStore] = await Promise.all([searchParams, cookies(), connectDb()]);
 	const timeZone = resolveTimeZone(cookieStore.get(TIME_ZONE_COOKIE)?.value);
-	const newsletters = await listNewslettersWithActiveCounts(NEWSLETTER_SUMMARY_FIELDS);
+	const [newsletters, automatedIds] = await Promise.all([
+		listNewslettersWithActiveCounts(NEWSLETTER_SUMMARY_FIELDS),
+		Automation.distinct("newsletterId"),
+	]);
 	const bySize = newsletters.toSorted((a, b) => b.activeCount - a.activeCount);
 	const selected = bySize.find(({ _id }) => _id.toString() === newsletterParam) ?? bySize[0];
 	const selectedId = selected?._id.toString();
+	const hasAutomations = automatedIds.some((id) => id.toString() === selectedId);
 
 	return (
 		<>
@@ -99,6 +106,14 @@ export default async function OverviewPage({ searchParams }) {
 								<TableRecentCampaigns newsletterId={selected._id} newsletters={newsletters} />
 							</Suspense>
 						</Section>
+
+						{hasAutomations && (
+							<Section title="Automations" href="/automations" stagger={4}>
+								<Suspense key={`automations-${selectedId}`} fallback={<SkeletonAutomations />}>
+									<StatsAutomations newsletterId={selected._id} />
+								</Suspense>
+							</Section>
+						)}
 					</>
 				) : (
 					<StateEmpty icon={Newspaper} title="No newsletters yet">
@@ -108,13 +123,13 @@ export default async function OverviewPage({ searchParams }) {
 					</StateEmpty>
 				)}
 
-				<Section title="Domains" href="/domains" stagger={4}>
+				<Section title="Domains" href="/domains" stagger={5}>
 					<Suspense fallback={<SkeletonDomainList />}>
 						<SectionDomains />
 					</Suspense>
 				</Section>
 
-				<Section title="System" stagger={5}>
+				<Section title="System" stagger={6}>
 					<Suspense fallback={<SkeletonSesAccount />}>
 						<StripSesAccount />
 					</Suspense>
@@ -205,6 +220,18 @@ async function TableRecentCampaigns({ newsletterId, newsletters }) {
 	return (
 		<div className="animate-fade-in">
 			<TableCampaigns campaigns={campaigns} newsletters={toNewsletterMap(newsletters)} />
+		</div>
+	);
+}
+
+async function StatsAutomations({ newsletterId }) {
+	const { totals, rows } = await getAutomationStats({ newsletterId });
+	return (
+		<div className="flex flex-col gap-3 animate-fade-in">
+			<div className="overflow-hidden rounded-2xl bg-card shadow-border">
+				<ListAutomationStats current={totals.current} previous={totals.previous} />
+			</div>
+			<TableAutomations rows={rows} />
 		</div>
 	);
 }
