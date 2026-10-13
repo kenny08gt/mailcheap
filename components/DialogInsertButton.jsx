@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { isWholeVariable } from "@/lib/automation-variables";
 import { isHttpsUrl } from "@/lib/brand-links";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,7 @@ export default function DialogInsertButton({ isOpen, onOpenChange, savedLinks, o
 	const [label, setLabel] = useState("");
 	const [href, setHref] = useState("");
 	const url = normalizeUrl(href);
-	const isValid = Boolean(label.trim()) && isHttpsUrl(url);
+	const isValid = Boolean(label.trim()) && (isHttpsUrl(url) || isWholeVariable(url));
 
 	// Cleared on the way out, so the next button starts empty.
 	function changeOpen(nextIsOpen) {
@@ -105,5 +106,5 @@ export default function DialogInsertButton({ isOpen, onOpenChange, savedLinks, o
 
 function normalizeUrl(value) {
 	const url = value.trim();
-	return !url || /^https?:/i.test(url) ? url : `https://${url}`;
+	return !url || /^https?:/i.test(url) || isWholeVariable(url) ? url : `https://${url}`;
 }

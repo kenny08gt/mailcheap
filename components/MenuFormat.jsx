@@ -5,6 +5,7 @@ import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Bold, CornerDownLeft, Heading1, Heading2, Italic, Link, Strikethrough, TextQuote, Unlink } from "lucide-react";
+import { isWholeVariable } from "@/lib/automation-variables";
 import { cn } from "@/lib/utils";
 
 export default function MenuFormat({ editor, isEditingLink, onEditLink, savedLinks = [] }) {
@@ -167,7 +168,7 @@ function shouldShowMenu({ editor, view, state, from, to }) {
 
 function normalizeUrl(value) {
 	const url = String(value ?? "").trim();
-	if (!url || /^(https?:|mailto:)/i.test(url)) return url;
+	if (!url || /^(https?:|mailto:)/i.test(url) || isWholeVariable(url)) return url;
 	if (/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(url)) return `mailto:${url}`;
 	return `https://${url}`;
 }

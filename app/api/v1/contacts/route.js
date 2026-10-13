@@ -1,12 +1,14 @@
 import { NextResponse, after } from "next/server";
 import { sendAlert } from "@/lib/alerts";
 import { authenticateRequest } from "@/lib/api-keys";
+import { readProperties } from "@/lib/automation-rules";
+import { onContactActive } from "@/lib/automations";
 import { isSendingEnabled } from "@/lib/config";
 import { upsertContact } from "@/lib/contacts";
 import { connectDb } from "@/lib/db";
 import { getInbox } from "@/lib/inbox-links";
 import { isRateLimited } from "@/lib/rate-limit";
-import { queueConfirmationEmail, queueWelcomeEmail } from "@/lib/sending";
+import { queueConfirmationEmail } from "@/lib/sending";
 import { isPlainObject, normalizeEmail } from "@/lib/validation";
 import Newsletter from "@/models/Newsletter";
 
@@ -23,7 +25,7 @@ function fail(status, error) {
 
 function readInput(body) {
 	if (!isPlainObject(body)) return { error: "Send a JSON object" };
-	const { newsletter, email, source, resubscribe, ip } = body;
+	const { newsletter, email, source, resubscribe, ip, properties } = body;
 	if (typeof newsletter !== "string" || !newsletter.trim()) return { error: "newsletter is required" };
 
 	const normalizedEmail = normalizeEmail(email);
@@ -34,12 +36,15 @@ function readInput(body) {
 	if (resubscribe !== undefined && typeof resubscribe !== "boolean") {
 		return { error: "resubscribe must be a boolean" };
 	}
+	const read = readProperties(properties);
+	if (read.error) return { error: read.error };
 	return {
 		slug: newsletter.trim().toLowerCase(),
 		email: normalizedEmail,
 		source: source?.trim() || "api",
 		resubscribe: resubscribe === true,
 		ip: typeof ip === "string" && IP_PATTERN.test(ip) ? ip : null,
+		properties: read.properties,
 	};
 }
 
@@ -76,11 +81,17 @@ export async function POST(request) {
 	});
 	// A pending contact who signs up again gets the confirmation again (throttled per address).
 	const isPending = contact.status === "pending";
-	if (isSendingEnabled() && (isPending || (created && contact.status === "active"))) {
-		const queue = isPending ? queueConfirmationEmail : queueWelcomeEmail;
+	if (isPending && isSendingEnabled()) {
 		after(() =>
-			queue({ newsletter, contact }).catch((error) =>
-				console.error(`[api/contacts] Signup email for ${contact._id} failed:`, error.message)
+			queueConfirmationEmail({ newsletter, contact }).catch((error) =>
+				console.error(`[api/contacts] Confirmation email for ${contact._id} failed:`, error.message)
+			)
+		);
+	}
+	if (created && contact.status === "active") {
+		after(() =>
+			onContactActive({ newsletter, contact, properties: input.properties }).catch((error) =>
+				console.error(`[api/contacts] Automations for ${contact._id} failed:`, error.message)
 			)
 		);
 	}

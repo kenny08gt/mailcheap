@@ -39,6 +39,8 @@ const STATUS_TONES = {
 	scheduled: "blue",
 	sending: "blue",
 	queued: "blue",
+	completed: "blue",
+	exited: "gray",
 	paused: "amber",
 	pending: "amber",
 	temporary_failure: "amber",

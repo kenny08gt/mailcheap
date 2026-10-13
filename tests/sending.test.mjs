@@ -192,3 +192,18 @@ test("chunk splits ids into send batches", () => {
 	assert.deepEqual(chunk([], 50), []);
 	assert.equal(chunk(Array.from({ length: 120 }, (_, index) => index), 50).length, 3);
 });
+
+test("automation emails have no archive page and are tagged like issues", () => {
+	const archived = { ...newsletter, slug: "notes", archiveEnabled: true, utm: { enabled: true, domains: [] } };
+	const content = {
+		_id: "84f1a2b3c4d5e6f7a8b9c0d3",
+		kind: "automation",
+		format: "rich",
+		subject: "Termina tu plan",
+		previewText: "",
+		html: '<p><a href="https://shop.example.com/pay">Pagar</a></p>',
+	};
+	assert.equal(getIssueWebUrl({ campaign: content, newsletter: archived }), null);
+	const email = buildRecipientEmail({ campaign: content, newsletter: archived, contact, messageId: null });
+	assert.match(email.html, /utm_campaign=termina-tu-plan/);
+});

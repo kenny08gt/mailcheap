@@ -3,12 +3,13 @@
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { sendAlert } from "@/lib/alerts";
+import { onContactActive } from "@/lib/automations";
 import { isSendingEnabled } from "@/lib/config";
 import { upsertContact } from "@/lib/contacts";
 import { connectDb } from "@/lib/db";
 import { getInbox } from "@/lib/inbox-links";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
-import { queueConfirmationEmail, queueWelcomeEmail } from "@/lib/sending";
+import { queueConfirmationEmail } from "@/lib/sending";
 import { normalizeEmail } from "@/lib/validation";
 import Newsletter from "@/models/Newsletter";
 
@@ -48,11 +49,17 @@ export async function subscribe(_state, formData) {
 
 	const { contact, created } = await upsertContact({ newsletter, email, source: "website", resubscribe: true });
 	const isPending = contact.status === "pending";
-	if (isSendingEnabled() && (isPending || (created && contact.status === "active"))) {
-		const queue = isPending ? queueConfirmationEmail : queueWelcomeEmail;
+	if (isPending && isSendingEnabled()) {
 		after(() =>
-			queue({ newsletter, contact }).catch((error) =>
-				console.error(`[subscribe] Signup email for ${contact._id} failed:`, error.message)
+			queueConfirmationEmail({ newsletter, contact }).catch((error) =>
+				console.error(`[subscribe] Confirmation email for ${contact._id} failed:`, error.message)
+			)
+		);
+	}
+	if (created && contact.status === "active") {
+		after(() =>
+			onContactActive({ newsletter, contact }).catch((error) =>
+				console.error(`[subscribe] Automations for ${contact._id} failed:`, error.message)
 			)
 		);
 	}
