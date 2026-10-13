@@ -2,8 +2,6 @@ import mongoose from "mongoose";
 
 export const AUTOMATION_STATUSES = ["draft", "active", "paused"];
 
-// Steps are plain objects (lib/automation-rules.js readAutomationInput checks them): a wait has hours,
-// an email has subject, previewText and html.
 const automationSchema = new mongoose.Schema(
 	{
 		newsletterId: { type: mongoose.Schema.Types.ObjectId, ref: "Newsletter", required: true },

@@ -109,7 +109,6 @@ function Count({ count, total }) {
 	);
 }
 
-// A run whose last step is a wait sits past the end until that wait is over.
 function formatRunStep(steps, run) {
 	const position = findPosition(steps, run.stepId, run.stepIndex);
 	return position < steps.length ? `Step ${position + 1}` : "Last wait";

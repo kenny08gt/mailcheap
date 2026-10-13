@@ -46,12 +46,10 @@ messageSchema.index(
 	{ campaignId: 1, contactId: 1, kind: 1 },
 	{ unique: true, partialFilterExpression: { kind: "last-chance" } }
 );
-// One email per run and step, even if a tick is retried.
 messageSchema.index(
 	{ enrollmentId: 1, stepId: 1 },
 	{ unique: true, partialFilterExpression: { kind: "automation" } }
 );
-// Step reports, and the tick's queue of automation emails.
 messageSchema.index({ automationId: 1, stepId: 1, status: 1 }, { partialFilterExpression: { kind: "automation" } });
 messageSchema.index({ sesMessageId: 1 }, { sparse: true });
 messageSchema.index({ kind: 1, createdAt: -1 });

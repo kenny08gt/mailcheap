@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-// The last run of each background job, keyed by job name, so the dashboard can tell when one stopped.
 const jobRunSchema = new mongoose.Schema(
 	{
 		_id: { type: String },

@@ -17,7 +17,6 @@ export async function confirmSubscription(token) {
 
 	if (confirmed) {
 		const newsletter = await Newsletter.findById(reference.newsletterId).lean();
-		// The welcome email is skipped while the newsletter confirms signups: the confirmation was their one email.
 		after(() =>
 			onContactActive({ newsletter, contact }).catch((error) =>
 				console.error(`[confirm] Automations for ${contact._id} failed:`, error.message)

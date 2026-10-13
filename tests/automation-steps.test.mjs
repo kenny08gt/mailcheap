@@ -60,7 +60,6 @@ test("the current step is found by id after steps are inserted before it", () =>
 });
 
 test("a deleted current step falls back to the saved position", () => {
-	// The run was waiting on "b" at index 2; "b" was deleted, so "c" moved into index 2.
 	const steps = [email("a"), wait("w", 1), email("c")];
 	const result = advance({ steps, stepId: "b", stepIndex: 2, now });
 	assert.deepEqual(result.emails, ["c"]);

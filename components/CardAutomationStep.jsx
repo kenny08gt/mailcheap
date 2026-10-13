@@ -19,7 +19,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { listVariables } from "@/lib/automation-variables";
 
 const HOURS_PER_DAY = 24;
-// Filled in from the address the test goes to.
 const TEST_FILLED = "email";
 
 export default function CardAutomationStep({
@@ -146,7 +145,6 @@ function StepEmail({ step, savedLinks, onChange }) {
 						className="h-11 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
 					/>
 				</Row>
-				{/* Keyed by id: the editor only reads its content on mount, so reordering must not swap bodies. */}
 				<EditorRich
 					key={step.id}
 					content={step.html}

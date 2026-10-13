@@ -8,7 +8,6 @@ import { isPlainObject, normalizeEmail } from "@/lib/validation";
 import Contact from "@/models/Contact";
 import Newsletter from "@/models/Newsletter";
 
-// Events can start runs that send email, so a leaked key can't be used to flood a list.
 const PER_KEY = { name: "api-events-key", limit: 3000, window: "1 h" };
 
 function fail(status, error) {
@@ -27,8 +26,6 @@ function readInput(body) {
 	return { slug: body.newsletter.trim().toLowerCase(), email, event, properties };
 }
 
-// Events act on contacts already in the newsletter: they end the runs that exit on them, then start
-// the automations they trigger. They never add anyone to the list.
 export async function POST(request) {
 	const apiKey = await authenticateRequest(request);
 	if (!apiKey) return fail(401, "Invalid API key");

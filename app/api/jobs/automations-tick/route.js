@@ -12,8 +12,6 @@ function isAuthorized(request) {
 	return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-// Called every 5 minutes by the server's systemd timer (deploy/systemd). Each result is logged: it's
-// the trace of what the automations did and when.
 export async function POST(request) {
 	if (!process.env.CRON_SECRET) return NextResponse.json({ error: "CRON_SECRET is not set" }, { status: 503 });
 	if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

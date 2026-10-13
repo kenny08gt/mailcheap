@@ -26,8 +26,6 @@ function revalidate(id) {
 	revalidatePath(`/automations/${id}`);
 }
 
-// What a campaign would be refused for, checked on every email step. Saves to a running automation
-// go through it too, or an edit could put an email in it that activation would have refused.
 async function findActivationProblem(automation) {
 	const problem = getAutomationProblem(automation);
 	if (problem) return problem;
@@ -52,7 +50,6 @@ export async function createAutomation(newsletterId) {
 	redirect(`/automations/${automation._id}`);
 }
 
-// Saves apply to running automations too: runs keep their place by step id (lib/automation-steps.js).
 export async function saveAutomation(id, values) {
 	const automation = await findAutomation(id);
 	if (!automation) return { error: "Automation not found" };
