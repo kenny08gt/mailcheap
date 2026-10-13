@@ -279,6 +279,8 @@ export default function FormAutomation({ automation, newsletter, isSendingEnable
 								savedLinks={savedLinks}
 								isLocked={isActive}
 								isSendingEnabled={isSendingEnabled}
+								newsletter={newsletter}
+								testEmail={testEmail}
 								onChange={(changed) => changeStep(index, changed)}
 								onMove={(direction) => moveStep(index, direction)}
 								onDelete={() => deleteStep(index)}
