@@ -12,6 +12,7 @@ import {
 	List,
 	ListOrdered,
 	Minus,
+	MousePointerClick,
 	Pilcrow,
 	RectangleHorizontal,
 	TextQuote,
@@ -82,7 +83,7 @@ export default function MenuSlash({ items, command, ref }) {
 export const SlashCommand = Extension.create({
 	name: "slashCommand",
 	addOptions() {
-		return { onPickImage: () => {} };
+		return { onPickImage: () => {}, onInsertButton: () => {} };
 	},
 	addProseMirrorPlugins() {
 		return [
@@ -93,6 +94,7 @@ export const SlashCommand = Extension.create({
 				command: ({ editor, range, props: item }) => {
 					item.run(editor.chain().focus().deleteRange(range)).run();
 					if (item.isImage) this.options.onPickImage(editor);
+					if (item.isButton) this.options.onInsertButton(editor);
 				},
 				render: renderMenu,
 			}),
@@ -147,4 +149,5 @@ const SLASH_ITEMS = [
 		icon: RectangleHorizontal,
 		run: (chain) => chain.wrapIn("callout"),
 	},
+	{ title: "Button", keywords: "cta call to action link", icon: MousePointerClick, run: (chain) => chain, isButton: true },
 ];

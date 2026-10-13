@@ -7,15 +7,18 @@ import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import StarterKit from "@tiptap/starter-kit";
 import { toast } from "sonner";
+import DialogInsertButton from "@/components/DialogInsertButton";
 import MenuFormat from "@/components/MenuFormat";
 import { SlashCommand } from "@/components/MenuSlash";
+import { ButtonLink } from "@/lib/editor-button";
 import { Callout } from "@/lib/editor-callout";
 import { IMAGE_TYPES, getDisplaySize, prepareImage, uploadImage } from "@/lib/upload-image";
 
 const MIN_HEIGHT = "min-h-[560px]";
 
-export default function EditorRich({ content, onChange, onReady }) {
+export default function EditorRich({ content, onChange, onReady, savedLinks = [] }) {
 	const [isEditingLink, setIsEditingLink] = useState(false);
+	const [isInsertingButton, setIsInsertingButton] = useState(false);
 	const editor = useEditor({
 		immediatelyRender: false,
 		content,
@@ -36,6 +39,7 @@ export default function EditorRich({ content, onChange, onReady }) {
 				},
 			}),
 			Callout,
+			ButtonLink,
 			Placeholder.configure({
 				placeholder: ({ node }) => (node.type.name === "heading" ? "Heading" : "Write, or press / for commands"),
 			}),
@@ -45,7 +49,7 @@ export default function EditorRich({ content, onChange, onReady }) {
 				onDrop: (current, files, position) => insertImages(current, files, position),
 				onPaste: (current, files) => insertImages(current, files),
 			}),
-			SlashCommand.configure({ onPickImage: pickImages }),
+			SlashCommand.configure({ onPickImage: pickImages, onInsertButton: () => setIsInsertingButton(true) }),
 		],
 		editorProps: {
 			attributes: { class: `prose-issue ${MIN_HEIGHT} px-5 py-5 outline-none`, "aria-label": "Content" },
@@ -62,10 +66,25 @@ export default function EditorRich({ content, onChange, onReady }) {
 
 	if (!editor) return <div className={MIN_HEIGHT} />;
 
+	function insertButton({ label, href }) {
+		editor.chain().focus().insertContent({ type: "button", attrs: { href }, content: [{ type: "text", text: label }] }).run();
+	}
+
 	return (
 		<>
 			<EditorContent editor={editor} />
-			<MenuFormat editor={editor} isEditingLink={isEditingLink} onEditLink={setIsEditingLink} />
+			<MenuFormat
+				editor={editor}
+				isEditingLink={isEditingLink}
+				onEditLink={setIsEditingLink}
+				savedLinks={savedLinks}
+			/>
+			<DialogInsertButton
+				isOpen={isInsertingButton}
+				onOpenChange={setIsInsertingButton}
+				savedLinks={savedLinks}
+				onInsert={insertButton}
+			/>
 		</>
 	);
 }

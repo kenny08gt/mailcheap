@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Bold, CornerDownLeft, Heading1, Heading2, Italic, Link, Strikethrough, TextQuote, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function MenuFormat({ editor, isEditingLink, onEditLink }) {
+export default function MenuFormat({ editor, isEditingLink, onEditLink, savedLinks = [] }) {
+	const linksId = useId();
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: current }) => ({
@@ -16,6 +17,9 @@ export default function MenuFormat({ editor, isEditingLink, onEditLink }) {
 			isStrike: current.isActive("strike"),
 			isLink: current.isActive("link"),
 			href: current.getAttributes("link").href ?? "",
+			// A button's link is the node's own, not a link mark on its label.
+			isButton: current.isActive("button"),
+			buttonHref: current.getAttributes("button").href ?? "",
 			isTitle: current.isActive("heading", { level: 1 }),
 			isHeading: current.isActive("heading", { level: 2 }),
 			isQuote: current.isActive("blockquote"),
@@ -34,6 +38,10 @@ export default function MenuFormat({ editor, isEditingLink, onEditLink }) {
 	function applyLink(event) {
 		event.preventDefault();
 		const href = normalizeUrl(new FormData(event.currentTarget).get("href"));
+		if (state.isButton) {
+			if (href) editor.chain().focus().updateAttributes("button", { href }).run();
+			return onEditLink(false);
+		}
 		const chain = editor.chain().focus().extendMarkRange("link");
 		(href ? chain.setLink({ href }) : chain.unsetLink()).run();
 		onEditLink(false);
@@ -54,13 +62,21 @@ export default function MenuFormat({ editor, isEditingLink, onEditLink }) {
 							type="text"
 							inputMode="url"
 							autoFocus
-							defaultValue={state.href}
-							placeholder="Paste a link"
+							defaultValue={state.isButton ? state.buttonHref : state.href}
+							placeholder={savedLinks.length > 0 ? "Paste or pick a link" : "Paste a link"}
 							aria-label="Link"
+							list={savedLinks.length > 0 ? linksId : undefined}
 							onKeyDown={(event) => event.key === "Escape" && closeLink()}
 							className="h-8 w-60 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
 						/>
-						{state.isLink && (
+						{savedLinks.length > 0 && (
+							<datalist id={linksId}>
+								{savedLinks.map(({ label, url }) => (
+									<option key={url} value={url} label={label} />
+								))}
+							</datalist>
+						)}
+						{state.isLink && !state.isButton && (
 							<ButtonFormat label="Remove link" onClick={removeLink}>
 								<Unlink />
 							</ButtonFormat>

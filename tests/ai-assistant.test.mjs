@@ -4,10 +4,13 @@ import {
 	ANALYSIS_SCHEMA,
 	DRAFT_SCHEMA,
 	REWRITE_SCHEMA,
+	buildDraftPrompt,
 	buildSystemPrompt,
 	getCostUsd,
+	getModelOptions,
 	normalizeDraft,
 	normalizeRewrite,
+	resolveModel,
 	summarizeCampaigns,
 } from "../lib/ai-assistant.js";
 import { isAiEnabled } from "../lib/config.js";
@@ -18,11 +21,56 @@ test("the system prompt asks for Spanish and lists the blocks the renderer keeps
 	assert.match(prompt, /Spanish/);
 	assert.match(prompt, /Pandy al día/);
 	assert.match(prompt, /Pandy Medical/);
-	for (const tag of ["<h1>", "<h2>", "<h3>", "<p>", "<strong>", "<em>", "<a href", "<ul>", "<ol>", "<li>", "<blockquote>", "<hr>", "<img", "data-callout"]) {
+	for (const tag of ["<h1>", "<h2>", "<h3>", "<p>", "<strong>", "<em>", "<a href", "<ul>", "<ol>", "<li>", "<blockquote>", "<hr>", "<img", "data-callout", '<p data-button=""><a href="https://...">Label</a></p>']) {
 		assert.ok(prompt.includes(tag), `mentions ${tag}`);
 	}
 	assert.match(prompt, /never invent an image URL/);
 	assert.match(prompt, /inline styles, classes/);
+});
+
+const brand = {
+	newsletterName: "Pandy al día",
+	websiteUrl: "https://pandy.cloud",
+	links: [{ label: "Congreso", url: "https://tickets.pandy.cloud/congreso" }],
+};
+
+test("the system prompt lists the saved links and forbids other URLs", () => {
+	const prompt = buildSystemPrompt(brand);
+	assert.ok(prompt.includes("- Website: https://pandy.cloud"));
+	assert.ok(prompt.includes("- Congreso: https://tickets.pandy.cloud/congreso"));
+	assert.match(prompt, /Use these exact URLs, or URLs the brief gives, and no others/);
+	assert.match(prompt, /don't add a header image/);
+	assert.match(buildSystemPrompt({ newsletterName: "X" }), /no saved links\. Only link to URLs the brief gives/);
+});
+
+test("drafts end with a button to a saved link, and never invent one", () => {
+	const prompt = buildDraftPrompt("Congreso en marzo", brand);
+	assert.match(prompt, /End the body with one call-to-action button \(<p data-button="">\) to the most relevant saved link, or to the Website link if none fits/);
+	assert.match(prompt, /Never invent a URL/);
+	const withoutWebsite = buildDraftPrompt("x", { links: brand.links });
+	assert.doesNotMatch(withoutWebsite, /Website link/);
+	assert.match(buildDraftPrompt("x", {}), /If the brief gives a URL for readers to act on, end the body with one call-to-action button/);
+});
+
+test("generated buttons survive the cleaner in the editor's markup", () => {
+	const { html } = normalizeDraft({ html: '<p data-button="" class="x"><a href="https://pandy.cloud" target="_blank">Ver más</a></p>' });
+	assert.equal(html, '<p data-button=""><a href="https://pandy.cloud" target="_blank">Ver más</a></p>');
+});
+
+test("only priced models and the configured one can be picked", () => {
+	const env = { AI_MODEL: "claude-custom-1" };
+	assert.equal(resolveModel(undefined, {}), "claude-sonnet-5-5");
+	assert.equal(resolveModel("", env), "claude-custom-1");
+	assert.equal(resolveModel("claude-haiku-5-5", env), "claude-haiku-5-5");
+	assert.equal(resolveModel("claude-custom-1", env), "claude-custom-1");
+	assert.equal(resolveModel("claude-custom-1", {}), null);
+	assert.equal(resolveModel("gpt-5", env), null);
+	assert.equal(resolveModel({ toString: () => "claude-haiku-5-5" }, env), null);
+	assert.deepEqual(
+		getModelOptions({}).map(({ label }) => label),
+		["Haiku 5.5 · 1× cost", "Sonnet 5.5 · 20× cost", "Opus 5.5 · 40× cost"]
+	);
+	assert.equal(getModelOptions(env).at(-1).label, "claude-custom-1 · cost unknown");
 });
 
 test("every output schema is strict: no extra properties and every property required", () => {

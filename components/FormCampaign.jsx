@@ -23,6 +23,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getSavedLinks } from "@/lib/brand-links";
 import { formatNumber } from "@/lib/format";
 import { markdownToHtml } from "@/lib/markdown";
 import { getPresendChecks } from "@/lib/presend-checks";
@@ -42,6 +43,7 @@ export default function FormCampaign({
 	sendTimes,
 	archiveUrlBase,
 	aiSpend,
+	aiModels,
 }) {
 	const isHtml = campaign.format === "html";
 	const [isDiscardOpen, setIsDiscardOpen] = useState(false);
@@ -61,6 +63,7 @@ export default function FormCampaign({
 	const [isWorking, startWorking] = useTransition();
 	const deferredValues = useDeferredValue(values);
 	const isUploading = values.body.includes('src="blob:');
+	const savedLinks = useMemo(() => getSavedLinks(newsletter), [newsletter]);
 
 	const rendered = useMemo(
 		() =>
@@ -274,7 +277,7 @@ export default function FormCampaign({
 							/>
 						</div>
 					) : (
-						<EditorRich content={initialBody} onChange={updateBody} onReady={setEditor} />
+						<EditorRich content={initialBody} onChange={updateBody} onReady={setEditor} savedLinks={savedLinks} />
 					)}
 				</div>
 
@@ -284,7 +287,14 @@ export default function FormCampaign({
 				>
 					<ListChecks checks={checks} />
 					{aiSpend && !isHtml && (
-						<CardAssistant campaignId={campaign._id} editor={editor} initialSpend={aiSpend} onDraft={applyDraft} />
+						<CardAssistant
+							campaignId={campaign._id}
+							editor={editor}
+							initialSpend={aiSpend}
+							models={aiModels.options}
+							defaultModel={aiModels.defaultModel}
+							onDraft={applyDraft}
+						/>
 					)}
 					<PreviewEmail
 						sender={newsletter}

@@ -17,6 +17,7 @@ import {
 	normalizeAnalysis,
 	normalizeDraft,
 	normalizeRewrite,
+	resolveModel,
 	summarizeCampaigns,
 } from "@/lib/ai-assistant";
 import { requireSession } from "@/lib/auth";
@@ -30,21 +31,28 @@ import Newsletter from "@/models/Newsletter";
 // Each call costs money and takes up to a minute; this only stops a stuck button or a loop.
 const PER_SESSION = { name: "ai-assistant", limit: 30, window: "1 h" };
 
-async function withNewsletter(campaignId, run) {
+async function withNewsletter(campaignId, requestedModel, run) {
 	const session = await requireSession();
 	if (!isAiEnabled()) return { error: "The AI assistant is not configured" };
+	const model = resolveModel(requestedModel);
+	if (!model) return { error: "This model isn't available" };
 	if (!isValidObjectId(campaignId)) return { error: "Campaign not found" };
 	if (await isRateLimited({ ...PER_SESSION, key: session.email })) {
 		return { error: "Too many AI requests. Try again in a while." };
 	}
 	await connectDb();
 	const campaign = await Campaign.findById(campaignId).select("newsletterId").lean();
-	const newsletter = campaign && (await Newsletter.findById(campaign.newsletterId).select("name fromName").lean());
+	const newsletter = campaign && (await Newsletter.findById(campaign.newsletterId).select("name fromName websiteUrl links").lean());
 	if (!newsletter) return { error: "Campaign not found" };
 
 	try {
-		const system = buildSystemPrompt({ newsletterName: newsletter.name, fromName: newsletter.fromName });
-		const { result, usage } = await run({ system, newsletter });
+		const system = buildSystemPrompt({
+			newsletterName: newsletter.name,
+			fromName: newsletter.fromName,
+			websiteUrl: newsletter.websiteUrl,
+			links: newsletter.links,
+		});
+		const { result, usage } = await run({ system, newsletter, model });
 		return { ok: true, ...result, usage, spend: await getRecentAiSpend() };
 	} catch (error) {
 		console.error("[assistant] AI request failed:", error);
@@ -52,16 +60,17 @@ async function withNewsletter(campaignId, run) {
 	}
 }
 
-export async function draftCampaign(campaignId, brief) {
+export async function draftCampaign(campaignId, brief, model) {
 	const text = String(brief ?? "").trim();
 	if (!text) return { error: "Describe the campaign first" };
 	if (text.length > MAX_BRIEF_LENGTH) return { error: `Keep the brief under ${MAX_BRIEF_LENGTH} characters` };
 
-	return withNewsletter(campaignId, async ({ system }) => {
+	return withNewsletter(campaignId, model, async ({ system, newsletter, model: allowedModel }) => {
 		const { data, usage } = await generateJson({
 			kind: "draft",
+			model: allowedModel,
 			system,
-			prompt: buildDraftPrompt(text),
+			prompt: buildDraftPrompt(text, newsletter),
 			schema: DRAFT_SCHEMA,
 		});
 		const draft = normalizeDraft(data);
@@ -70,16 +79,17 @@ export async function draftCampaign(campaignId, brief) {
 	});
 }
 
-export async function rewriteSelection(campaignId, { html, preset, instruction, isInline } = {}) {
+export async function rewriteSelection(campaignId, { html, preset, instruction, isInline, model } = {}) {
 	const selection = String(html ?? "").trim();
 	const request = REWRITE_PRESETS[preset] ?? String(instruction ?? "").trim().slice(0, 500);
 	if (!selection) return { error: "Select some text first" };
 	if (selection.length > MAX_SELECTION_LENGTH) return { error: "The selection is too long" };
 	if (!request) return { error: "Say how to rewrite it" };
 
-	return withNewsletter(campaignId, async ({ system }) => {
+	return withNewsletter(campaignId, model, async ({ system, model: allowedModel }) => {
 		const { data, usage } = await generateJson({
 			kind: "rewrite",
+			model: allowedModel,
 			system,
 			prompt: buildRewritePrompt({ html: selection, instruction: request, isInline: Boolean(isInline) }),
 			schema: REWRITE_SCHEMA,
@@ -91,8 +101,8 @@ export async function rewriteSelection(campaignId, { html, preset, instruction, 
 	});
 }
 
-export async function analyzeCampaigns(campaignId) {
-	return withNewsletter(campaignId, async ({ system, newsletter }) => {
+export async function analyzeCampaigns(campaignId, model) {
+	return withNewsletter(campaignId, model, async ({ system, newsletter, model: allowedModel }) => {
 		const campaigns = await Campaign.find({ newsletterId: newsletter._id, status: "sent" })
 			.sort({ sentAt: -1 })
 			.limit(DEFAULT_ANALYSIS_LIMIT)
@@ -104,6 +114,7 @@ export async function analyzeCampaigns(campaignId) {
 		const [providers, links] = await Promise.all([getProviderBreakdowns(ids), getLinkClicks(ids)]);
 		const { data, usage } = await generateJson({
 			kind: "analysis",
+			model: allowedModel,
 			system,
 			prompt: buildAnalysisPrompt({
 				newsletterName: newsletter.name,

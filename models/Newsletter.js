@@ -12,6 +12,19 @@ const newsletterSchema = new mongoose.Schema(
 		archiveEnabled: { type: Boolean, default: false },
 		description: { type: String, trim: true },
 		socialLinks: [{ type: String, trim: true }],
+		// The "home" link: the banner points at it, and the editor and AI assistant offer it first.
+		websiteUrl: { type: String, trim: true },
+		// Banner at the top of every email.
+		headerImageUrl: { type: String, trim: true },
+		// Named links offered when adding a link or button, and to the AI assistant (lib/brand-links.js).
+		links: [
+			new mongoose.Schema({ label: { type: String, trim: true }, url: { type: String, trim: true } }, { _id: false }),
+		],
+		// Tags links to these domains (every external link when empty) when an issue is sent (lib/utm.js).
+		utm: {
+			enabled: { type: Boolean, default: false },
+			domains: [{ type: String, trim: true, lowercase: true }],
+		},
 		// The archive's author page; the author's name is fromName.
 		author: {
 			bio: { type: String, trim: true },

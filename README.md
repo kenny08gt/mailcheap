@@ -207,6 +207,7 @@ A local MongoDB works: `docker run -d -p 27017:27017 mongo` and `MONGODB_URI=mon
 | `ARCHIVE_HOSTS` | No | Archive domains, like `news.example.com=weekly,letters.example.org=monthly` |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | No | Shared rate limits |
 | `BLOB_READ_WRITE_TOKEN` | No | Image uploads in the editor (set by Vercel Blob) |
+| `UPLOAD_DIR`, `UPLOAD_PUBLIC_URL` | No | Image uploads on the server's disk, served by your web server (default URL `APP_URL/uploads`) |
 | `ALERT_FROM` | No | From address for alert emails, on a verified domain |
 
 [`.env.example`](.env.example) has the same list with more detail.

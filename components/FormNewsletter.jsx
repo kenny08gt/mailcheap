@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
-import { ExternalLink, FlaskConical, Loader2 } from "lucide-react";
+import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ExternalLink, FlaskConical, ImageUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { saveNewsletter, sendWelcomeTest } from "@/app/(app)/newsletters/actions";
 import AvatarNewsletter from "@/components/AvatarNewsletter";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_SAVED_LINKS, formatNamedLinks, isHttpsUrl } from "@/lib/brand-links";
 import { CLEANUP_LIMITS, LAST_CHANCE_DAYS, getCleanupSettings } from "@/lib/cleanup";
 import { CONFIRM_URL_PLACEHOLDER, getConfirmationContent } from "@/lib/confirmation-content";
 import { formatNumber } from "@/lib/format";
@@ -17,11 +18,19 @@ import { KEEP_URL_PLACEHOLDER, getLastChanceContent } from "@/lib/last-chance-co
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { UNSUBSCRIBE_PLACEHOLDER, renderEmail } from "@/lib/render-email";
 import { slugify } from "@/lib/slug";
+import { IMAGE_TYPES, prepareImage, uploadImage } from "@/lib/upload-image";
 import { cn } from "@/lib/utils";
 
 const IMAGE_PREVIEW_PATTERN = /^(https:\/\/\S+\.\S{2,}\/\S+|\/\S+\.\w{3,4})$/;
 
-export default function FormNewsletter({ newsletter, verifiedDomains, isSendingEnabled, testEmail, cleanupTotals }) {
+export default function FormNewsletter({
+	newsletter,
+	verifiedDomains,
+	isSendingEnabled,
+	isUploadEnabled,
+	testEmail,
+	cleanupTotals,
+}) {
 	const [state, action, isPending] = useActionState(saveNewsletter, null);
 	const [isTesting, startTesting] = useTransition();
 	const [name, setName] = useState(newsletter?.name ?? "");
@@ -30,6 +39,11 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 	const [fromName, setFromName] = useState(newsletter?.fromName ?? "");
 	const [fromEmail, setFromEmail] = useState(newsletter?.fromEmail ?? "");
 	const [imageUrl, setImageUrl] = useState(newsletter?.imageUrl ?? "");
+	const [websiteUrl, setWebsiteUrl] = useState(newsletter?.websiteUrl ?? "");
+	const [headerImageUrl, setHeaderImageUrl] = useState(newsletter?.headerImageUrl ?? "");
+	const [isUploadingHeader, startUploadingHeader] = useTransition();
+	const headerInputRef = useRef(null);
+	const [isUtmEnabled, setIsUtmEnabled] = useState(Boolean(newsletter?.utm?.enabled));
 	const [isConfirmationRequired, setIsConfirmationRequired] = useState(Boolean(newsletter?.requireConfirmation));
 	const [confirmationEdits, setConfirmationEdits] = useState(null);
 	const [isWelcomeEnabled, setIsWelcomeEnabled] = useState(Boolean(newsletter?.welcome?.enabled));
@@ -49,15 +63,26 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 		if (state?.error) toast.error(state.error);
 	}, [state]);
 
+	// Every email shows the banner, so the previews follow the fields as they're edited.
+	const previewNewsletter = useMemo(
+		() => ({
+			name,
+			postalAddress: newsletter?.postalAddress,
+			headerImageUrl: isHttpsUrl(headerImageUrl) ? headerImageUrl : "",
+			websiteUrl: isHttpsUrl(websiteUrl) ? websiteUrl : "",
+		}),
+		[name, newsletter?.postalAddress, headerImageUrl, websiteUrl]
+	);
+
 	const welcomeHtml = useMemo(
 		() =>
 			renderEmail({
 				markdown: deferredWelcome.markdown,
 				subject: deferredWelcome.subject,
 				previewText: deferredWelcome.previewText,
-				newsletter: { name, postalAddress: newsletter?.postalAddress },
+				newsletter: previewNewsletter,
 			}).html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, "#"),
-		[deferredWelcome, name, newsletter?.postalAddress]
+		[deferredWelcome, previewNewsletter]
 	);
 
 	// Until it's edited, the built-in email follows the name.
@@ -68,20 +93,20 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 	const deferredConfirmation = useDeferredValue(confirmation);
 	const confirmationHtml = useMemo(
 		() =>
-			renderEmail({ ...deferredConfirmation, newsletter: { name, postalAddress: newsletter?.postalAddress } })
+			renderEmail({ ...deferredConfirmation, newsletter: previewNewsletter })
 				.html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, "#")
 				.replaceAll(CONFIRM_URL_PLACEHOLDER, "#"),
-		[deferredConfirmation, name, newsletter?.postalAddress]
+		[deferredConfirmation, previewNewsletter]
 	);
 
 	const lastChance = useMemo(() => {
 		const content = getLastChanceContent({ name, fromEmail });
-		const { html } = renderEmail({ ...content, newsletter: { name, postalAddress: newsletter?.postalAddress } });
+		const { html } = renderEmail({ ...content, newsletter: previewNewsletter });
 		return {
 			...content,
 			html: html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, "#").replaceAll(KEEP_URL_PLACEHOLDER, "#"),
 		};
-	}, [name, fromEmail, newsletter?.postalAddress]);
+	}, [name, fromEmail, previewNewsletter]);
 
 	const previewImageUrl = IMAGE_PREVIEW_PATTERN.test(imageUrl) ? imageUrl : "";
 	const fromDomain = fromEmail.split("@")[1]?.trim().toLowerCase();
@@ -107,6 +132,20 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 			const { value } = event.target;
 			setCleanup((current) => ({ ...current, [key]: value }));
 		};
+	}
+
+	function uploadHeader(event) {
+		const [file] = event.target.files;
+		event.target.value = "";
+		if (!file) return;
+		startUploadingHeader(async () => {
+			try {
+				const image = await prepareImage(file);
+				setHeaderImageUrl(await uploadImage(image.file));
+			} catch (error) {
+				toast.error(error.message);
+			}
+		});
 	}
 
 	function sendTest() {
@@ -196,9 +235,99 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 				</Field>
 			</Section>
 
+			<Section title="Brand" stagger={2}>
+				<Field label="Website" hint="The banner links here, and the editor and AI assistant offer it first">
+					<Input
+						name="websiteUrl"
+						value={websiteUrl}
+						placeholder="https://example.com"
+						className="font-mono"
+						onChange={(event) => setWebsiteUrl(event.target.value)}
+					/>
+				</Field>
+				<Field label="Header image" hint="Banner at the top of every email, 1200px wide or more">
+					<span className="flex items-center gap-2">
+						<Input
+							name="headerImageUrl"
+							value={headerImageUrl}
+							placeholder="https://example.com/banner.png"
+							className="font-mono"
+							onChange={(event) => setHeaderImageUrl(event.target.value)}
+						/>
+						{isUploadEnabled && (
+							<>
+								<input
+									ref={headerInputRef}
+									type="file"
+									accept={IMAGE_TYPES.join(",")}
+									hidden
+									onChange={uploadHeader}
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => headerInputRef.current?.click()}
+									disabled={isUploadingHeader}
+								>
+									{isUploadingHeader ? <Loader2 className="animate-spin" /> : <ImageUp />}
+									Upload
+								</Button>
+							</>
+						)}
+					</span>
+					{previewNewsletter.headerImageUrl && (
+						// eslint-disable-next-line @next/next/no-img-element -- any host, like the email itself
+						<img
+							src={previewNewsletter.headerImageUrl}
+							alt=""
+							className="mt-1 max-h-32 w-full rounded-lg object-cover shadow-border"
+						/>
+					)}
+				</Field>
+				<Field
+					label="Saved links"
+					hint={`One per line, a label then an https:// link. Offered when adding links and buttons. Up to ${MAX_SAVED_LINKS}.`}
+				>
+					<Textarea
+						name="links"
+						defaultValue={formatNamedLinks(newsletter?.links)}
+						rows={3}
+						placeholder={"Tienda https://example.com/tienda\nEventos https://example.com/eventos"}
+						className="font-mono text-[13px] leading-6"
+					/>
+				</Field>
+			</Section>
+
+			<Section
+				title="UTM tags"
+				stagger={3}
+				action={
+					<Switch
+						name="utmEnabled"
+						checked={isUtmEnabled}
+						onCheckedChange={setIsUtmEnabled}
+						aria-label="UTM tags"
+					/>
+				}
+			>
+				<p className="px-4 py-3 text-sm text-pretty text-muted-foreground">
+					Adds utm_source={slug || "slug"}, utm_medium=email and utm_campaign from the subject to links in sent
+					issues, so your analytics can tell where visits came from. Links that already have UTM tags stay as
+					they are.
+				</p>
+				<Field label="Domains" hint="Comma separated, subdomains included. Empty tags every link outside Mailcheap.">
+					<Input
+						name="utmDomains"
+						defaultValue={newsletter?.utm?.domains?.join(", ")}
+						placeholder="example.com, shop.example.org"
+						className="font-mono"
+					/>
+				</Field>
+			</Section>
+
 			<Section
 				title="Confirm new signups"
-				stagger={2}
+				stagger={4}
 				action={
 					<Switch
 						name="requireConfirmation"
@@ -256,7 +385,7 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 
 			<Section
 				title="Welcome email"
-				stagger={3}
+				stagger={5}
 				collapsedNote={
 					isConfirmationRequired &&
 					"Not sent while new signups confirm, since the confirmation email replaces it. Its content is kept."
@@ -315,7 +444,7 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 
 			<Section
 				title="List cleanup"
-				stagger={4}
+				stagger={6}
 				action={
 					<Switch
 						name="cleanupEnabled"
@@ -374,7 +503,7 @@ export default function FormNewsletter({ newsletter, verifiedDomains, isSendingE
 
 			<Section
 				title="Public archive"
-				stagger={5}
+				stagger={7}
 				action={
 					<div className="flex items-center gap-3">
 						{newsletter?.archiveEnabled && (

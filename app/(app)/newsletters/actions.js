@@ -8,10 +8,12 @@ import { requireSession } from "@/lib/auth";
 import { CLEANUP_LIMITS } from "@/lib/cleanup";
 import { isSendingEnabled } from "@/lib/config";
 import { getConfirmationProblem } from "@/lib/confirmation-content";
+import { isHttpsUrl, parseNamedLinks } from "@/lib/brand-links";
 import { connectDb } from "@/lib/db";
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { sendWelcomeTestEmail } from "@/lib/sending";
 import { parseSocialLinks } from "@/lib/social";
+import { parseUtmDomains } from "@/lib/utm";
 import Newsletter from "@/models/Newsletter";
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
@@ -45,6 +47,10 @@ function readNewsletter(formData) {
 		description: readText(formData, "description"),
 		author: { bio: readText(formData, "authorBio"), imageUrl: readText(formData, "authorImageUrl") },
 		socialLinks: parseSocialLinks(formData.get("socialLinks")),
+		websiteUrl: readText(formData, "websiteUrl"),
+		headerImageUrl: readText(formData, "headerImageUrl"),
+		links: parseNamedLinks(formData.get("links")),
+		utm: { enabled: formData.get("utmEnabled") === "on", domains: parseUtmDomains(formData.get("utmDomains")) },
 		requireConfirmation: formData.get("requireConfirmation") === "on",
 		cleanup: {
 			enabled: formData.get("cleanupEnabled") === "on",
@@ -83,6 +89,10 @@ function validateNewsletter(values) {
 		return "Author photo must be an https:// link or a path like /authors/name.jpg";
 	}
 	if (values.socialLinks.error) return values.socialLinks.error;
+	if (values.websiteUrl && !isHttpsUrl(values.websiteUrl)) return "Website must be an https:// link";
+	if (values.headerImageUrl && !isHttpsUrl(values.headerImageUrl)) return "Header image must be an https:// link";
+	if (values.links.error) return values.links.error;
+	if (values.utm.domains.error) return values.utm.domains.error;
 	const { minIssues, maxIssues, minDays, maxDays } = CLEANUP_LIMITS;
 	if (!isWithin(values.cleanup.issues, minIssues, maxIssues)) {
 		return `Ignored issues should be a whole number from ${minIssues} to ${maxIssues}`;
@@ -122,6 +132,8 @@ export async function saveNewsletter(_state, formData) {
 	const document = {
 		...rest,
 		socialLinks: values.socialLinks.links,
+		links: values.links.links,
+		utm: { enabled: values.utm.enabled, domains: values.utm.domains.domains },
 		...(formData.has("welcomeSubject") && { welcome }),
 		...(formData.has("confirmationSubject") && { confirmation }),
 	};

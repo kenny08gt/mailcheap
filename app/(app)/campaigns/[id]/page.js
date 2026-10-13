@@ -6,6 +6,7 @@ import { getArchiveUrls } from "@/lib/archive-hosts";
 import { getLinkClicks, getProviderBreakdowns } from "@/lib/campaign-engagement";
 import { sendTimesPipeline } from "@/lib/campaign-queries";
 import { getRecentAiSpend } from "@/lib/ai";
+import { getDefaultModel, getModelOptions } from "@/lib/ai-assistant";
 import { isAiEnabled, isSendingEnabled } from "@/lib/config";
 import { connectDb } from "@/lib/db";
 import { serialize } from "@/lib/serialize";
@@ -64,6 +65,7 @@ export default async function CampaignPage({ params }) {
 			sendTimes={sendTimes}
 			archiveUrlBase={newsletter.archiveEnabled ? getArchiveUrls(newsletter).absolutePost("") : null}
 			aiSpend={aiSpend}
+			aiModels={aiSpend && { options: getModelOptions(), defaultModel: getDefaultModel() }}
 		/>
 	);
 }

@@ -8,11 +8,14 @@ import { toast } from "sonner";
 import { analyzeCampaigns, draftCampaign, rewriteSelection } from "@/app/(app)/campaigns/assistant-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_ANALYSIS_LIMIT, MAX_BRIEF_LENGTH } from "@/lib/ai-assistant";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const MODEL_KEY = "mailcheap:ai-model";
 
 const PRESETS = [
 	{ id: "shorter", label: "Shorter" },
@@ -36,8 +39,19 @@ function readSelection(editor) {
 	return { from, to, isInline, html: getHTMLFromFragment(fragment, editor.schema), doc: editor.state.doc };
 }
 
-export default function CardAssistant({ campaignId, editor, initialSpend, onDraft }) {
+function readStoredModel(models) {
+	try {
+		const stored = localStorage.getItem(MODEL_KEY);
+		return models.some(({ id }) => id === stored) ? stored : null;
+	} catch {
+		return null;
+	}
+}
+
+export default function CardAssistant({ campaignId, editor, initialSpend, models, defaultModel, onDraft }) {
 	const [isOpen, setIsOpen] = useState(false);
+	const [pickedModel, setPickedModel] = useState(null);
+	const model = pickedModel ?? defaultModel;
 	const [tab, setTab] = useState("draft");
 	const [brief, setBrief] = useState("");
 	const [isConfirming, setIsConfirming] = useState(false);
@@ -67,7 +81,7 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 		if (!editor) return;
 		if (!editor.isEmpty && !isConfirming) return setIsConfirming(true);
 		setIsConfirming(false);
-		run("draft", () => draftCampaign(campaignId, brief), ({ draft }) => {
+		run("draft", () => draftCampaign(campaignId, brief, model), ({ draft }) => {
 			if (editor.isDestroyed) return;
 			editor.commands.setContent(draft.html);
 			onDraft({ subject: draft.subject, previewText: draft.previewText });
@@ -80,7 +94,7 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 		const selection = readSelection(editor);
 		run(
 			"rewrite",
-			() => rewriteSelection(campaignId, { html: selection.html, isInline: selection.isInline, ...options }),
+			() => rewriteSelection(campaignId, { html: selection.html, isInline: selection.isInline, model, ...options }),
 			({ html }) => {
 				if (editor.isDestroyed) return;
 				if (editor.state.doc !== selection.doc) {
@@ -89,6 +103,19 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 				editor.chain().focus().insertContentAt({ from: selection.from, to: selection.to }, html).run();
 			}
 		);
+	}
+
+	// Read on first open, since the card renders closed on the server.
+	function toggle() {
+		if (!isOpen && pickedModel === null) setPickedModel(readStoredModel(models));
+		setIsOpen(!isOpen);
+	}
+
+	function pickModel(id) {
+		setPickedModel(id);
+		try {
+			localStorage.setItem(MODEL_KEY, id);
+		} catch {}
 	}
 
 	function applySuggestions() {
@@ -104,7 +131,7 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 		<div className="rounded-xl bg-card shadow-border">
 			<button
 				type="button"
-				onClick={() => setIsOpen(!isOpen)}
+				onClick={toggle}
 				aria-expanded={isOpen}
 				className="flex h-11 w-full items-center gap-2 px-4 text-sm font-medium"
 			>
@@ -199,7 +226,9 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 									size="sm"
 									variant="outline"
 									disabled={isPending}
-									onClick={() => run("analysis", () => analyzeCampaigns(campaignId), (result) => setAnalysis(result.analysis))}
+									onClick={() =>
+										run("analysis", () => analyzeCampaigns(campaignId, model), (result) => setAnalysis(result.analysis))
+									}
 								>
 									{spinner("analysis")}
 									Analyze
@@ -219,6 +248,21 @@ export default function CardAssistant({ campaignId, editor, initialSpend, onDraf
 						</TabsContent>
 					</Tabs>
 
+					<div className="flex items-center gap-2">
+						<span className="mr-auto text-xs text-muted-foreground">Model</span>
+						<Select value={model} onValueChange={pickModel} disabled={isPending}>
+							<SelectTrigger size="sm" className="text-xs" aria-label="Model">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent align="end">
+								{models.map(({ id, label }) => (
+									<SelectItem key={id} value={id}>
+										{label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 					{isPending && <p className="text-xs text-muted-foreground">Working on it. This can take up to a minute.</p>}
 					<p className="text-xs text-muted-foreground tabular-nums">
 						{lastCall &&
