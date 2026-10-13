@@ -10,6 +10,7 @@ import { isSendingEnabled } from "@/lib/config";
 import { getConfirmationProblem } from "@/lib/confirmation-content";
 import { isHttpsUrl, parseNamedLinks } from "@/lib/brand-links";
 import { connectDb } from "@/lib/db";
+import { THEME_COLORS, parseTheme } from "@/lib/email-theme";
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { sendWelcomeTestEmail } from "@/lib/sending";
 import { parseSocialLinks } from "@/lib/social";
@@ -49,6 +50,7 @@ function readNewsletter(formData) {
 		socialLinks: parseSocialLinks(formData.get("socialLinks")),
 		websiteUrl: readText(formData, "websiteUrl"),
 		headerImageUrl: readText(formData, "headerImageUrl"),
+		theme: parseTheme(Object.fromEntries(THEME_COLORS.map(({ key }) => [key, readText(formData, `theme.${key}`)]))),
 		links: parseNamedLinks(formData.get("links")),
 		utm: { enabled: formData.get("utmEnabled") === "on", domains: parseUtmDomains(formData.get("utmDomains")) },
 		requireConfirmation: formData.get("requireConfirmation") === "on",
@@ -91,6 +93,7 @@ function validateNewsletter(values) {
 	if (values.socialLinks.error) return values.socialLinks.error;
 	if (values.websiteUrl && !isHttpsUrl(values.websiteUrl)) return "Website must be an https:// link";
 	if (values.headerImageUrl && !isHttpsUrl(values.headerImageUrl)) return "Header image must be an https:// link";
+	if (values.theme.error) return values.theme.error;
 	if (values.links.error) return values.links.error;
 	if (values.utm.domains.error) return values.utm.domains.error;
 	const { minIssues, maxIssues, minDays, maxDays } = CLEANUP_LIMITS;
@@ -133,6 +136,7 @@ export async function saveNewsletter(_state, formData) {
 		...rest,
 		socialLinks: values.socialLinks.links,
 		links: values.links.links,
+		theme: values.theme.theme,
 		utm: { enabled: values.utm.enabled, domains: values.utm.domains.domains },
 		...(formData.has("welcomeSubject") && { welcome }),
 		...(formData.has("confirmationSubject") && { confirmation }),

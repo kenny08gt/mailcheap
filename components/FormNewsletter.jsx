@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MAX_SAVED_LINKS, formatNamedLinks, isHttpsUrl } from "@/lib/brand-links";
 import { CLEANUP_LIMITS, LAST_CHANCE_DAYS, getCleanupSettings } from "@/lib/cleanup";
 import { CONFIRM_URL_PLACEHOLDER, getConfirmationContent } from "@/lib/confirmation-content";
+import { THEME_COLORS, isHexColor } from "@/lib/email-theme";
 import { formatNumber } from "@/lib/format";
 import { KEEP_URL_PLACEHOLDER, getLastChanceContent } from "@/lib/last-chance-content";
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
@@ -43,6 +44,9 @@ export default function FormNewsletter({
 	const [headerImageUrl, setHeaderImageUrl] = useState(newsletter?.headerImageUrl ?? "");
 	const [isUploadingHeader, startUploadingHeader] = useTransition();
 	const headerInputRef = useRef(null);
+	const [theme, setTheme] = useState(() =>
+		Object.fromEntries(THEME_COLORS.map(({ key }) => [key, newsletter?.theme?.[key] ?? ""]))
+	);
 	const [isUtmEnabled, setIsUtmEnabled] = useState(Boolean(newsletter?.utm?.enabled));
 	const [isConfirmationRequired, setIsConfirmationRequired] = useState(Boolean(newsletter?.requireConfirmation));
 	const [confirmationEdits, setConfirmationEdits] = useState(null);
@@ -63,15 +67,18 @@ export default function FormNewsletter({
 		if (state?.error) toast.error(state.error);
 	}, [state]);
 
-	// Every email shows the banner, so the previews follow the fields as they're edited.
+	const previewImageUrl = IMAGE_PREVIEW_PATTERN.test(imageUrl) ? imageUrl : "";
+	// Every email shows the banner and colors, so the previews follow the fields as they're edited.
 	const previewNewsletter = useMemo(
 		() => ({
 			name,
+			imageUrl: previewImageUrl,
 			postalAddress: newsletter?.postalAddress,
 			headerImageUrl: isHttpsUrl(headerImageUrl) ? headerImageUrl : "",
 			websiteUrl: isHttpsUrl(websiteUrl) ? websiteUrl : "",
+			theme,
 		}),
-		[name, newsletter?.postalAddress, headerImageUrl, websiteUrl]
+		[name, previewImageUrl, newsletter?.postalAddress, headerImageUrl, websiteUrl, theme]
 	);
 
 	const welcomeHtml = useMemo(
@@ -108,7 +115,6 @@ export default function FormNewsletter({
 		};
 	}, [name, fromEmail, previewNewsletter]);
 
-	const previewImageUrl = IMAGE_PREVIEW_PATTERN.test(imageUrl) ? imageUrl : "";
 	const fromDomain = fromEmail.split("@")[1]?.trim().toLowerCase();
 	const isDomainUnverified =
 		Boolean(fromDomain) && Array.isArray(verifiedDomains) && !verifiedDomains.includes(fromDomain);
@@ -298,9 +304,41 @@ export default function FormNewsletter({
 				</Field>
 			</Section>
 
+			<Section title="Email colors" stagger={3}>
+				{THEME_COLORS.map(({ key, label, hint, swatch }) => (
+					<Field key={key} label={label} hint={hint}>
+						<span className="flex items-center gap-2">
+							<input
+								type="color"
+								value={isHexColor(theme[key]) ? theme[key].toLowerCase() : swatch}
+								onChange={(event) => setTheme((current) => ({ ...current, [key]: event.target.value }))}
+								aria-label={`${label} color`}
+								className="size-9 shrink-0 cursor-pointer rounded-md bg-transparent shadow-border"
+							/>
+							<Input
+								name={`theme.${key}`}
+								value={theme[key]}
+								placeholder={`Default, ${swatch}`}
+								maxLength={7}
+								className="font-mono"
+								onChange={(event) => setTheme((current) => ({ ...current, [key]: event.target.value }))}
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								disabled={!theme[key]}
+								onClick={() => setTheme((current) => ({ ...current, [key]: "" }))}
+							>
+								Reset
+							</Button>
+						</span>
+					</Field>
+				))}
+			</Section>
+
 			<Section
 				title="UTM tags"
-				stagger={3}
+				stagger={4}
 				action={
 					<Switch
 						name="utmEnabled"
@@ -327,7 +365,7 @@ export default function FormNewsletter({
 
 			<Section
 				title="Confirm new signups"
-				stagger={4}
+				stagger={5}
 				action={
 					<Switch
 						name="requireConfirmation"
@@ -385,7 +423,7 @@ export default function FormNewsletter({
 
 			<Section
 				title="Welcome email"
-				stagger={5}
+				stagger={6}
 				collapsedNote={
 					isConfirmationRequired &&
 					"Not sent while new signups confirm, since the confirmation email replaces it. Its content is kept."
@@ -444,7 +482,7 @@ export default function FormNewsletter({
 
 			<Section
 				title="List cleanup"
-				stagger={6}
+				stagger={7}
 				action={
 					<Switch
 						name="cleanupEnabled"
@@ -503,7 +541,7 @@ export default function FormNewsletter({
 
 			<Section
 				title="Public archive"
-				stagger={7}
+				stagger={8}
 				action={
 					<div className="flex items-center gap-3">
 						{newsletter?.archiveEnabled && (

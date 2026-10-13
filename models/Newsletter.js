@@ -16,6 +16,18 @@ const newsletterSchema = new mongoose.Schema(
 		websiteUrl: { type: String, trim: true },
 		// Banner at the top of every email.
 		headerImageUrl: { type: String, trim: true },
+		// Email colors, each "#rrggbb" or unset for the default (lib/email-theme.js).
+		theme: {
+			background: String,
+			card: String,
+			text: String,
+			muted: String,
+			line: String,
+			link: String,
+			accent: String,
+			accentText: String,
+			headerBackground: String,
+		},
 		// Named links offered when adding a link or button, and to the AI assistant (lib/brand-links.js).
 		links: [
 			new mongoose.Schema({ label: { type: String, trim: true }, url: { type: String, trim: true } }, { _id: false }),
