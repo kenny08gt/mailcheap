@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { startTransition, useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ExternalLink, FlaskConical, ImageUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { saveNewsletter, sendWelcomeTest } from "@/app/(app)/newsletters/actions";
@@ -163,6 +163,13 @@ export default function FormNewsletter({
 		});
 	}
 
+	// A form action resets the form when it's done, and the reset turns every switch back to how it was on load.
+	function submit(event) {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+		startTransition(() => action(formData));
+	}
+
 	function sendTest() {
 		startTesting(async () => {
 			const result = await sendWelcomeTest(newsletter._id);
@@ -172,7 +179,7 @@ export default function FormNewsletter({
 	}
 
 	return (
-		<form action={action} className="flex flex-col gap-4">
+		<form onSubmit={submit} className="flex flex-col gap-4">
 			{newsletter && <input type="hidden" name="id" value={newsletter._id} />}
 
 			<Section title="General" stagger={0}>
