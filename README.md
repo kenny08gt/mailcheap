@@ -35,7 +35,7 @@ Mailcheap is the rest of what a newsletter needs, in one small Next.js app: an e
 **Keep it healthy**
 
 - SES events (deliveries, bounces, complaints) and a suppression list shared by every newsletter.
-- A send pauses itself when bounces pass 2% or complaints pass 0.08%.
+- A send pauses itself when bounces pass 2% (5 at least) or complaints pass 0.08% (2 at least), so one complaint never stops it.
 - One-click unsubscribe (RFC 8058 `List-Unsubscribe` headers) and an unsubscribe page, with signed links.
 - List cleanup, off by default: readers who ignored several issues get one "do you still want this?" email, then stop getting issues.
 - Open and click tracking on your own domain, with link scanners filtered out.
@@ -183,7 +183,7 @@ A local MongoDB works: `docker run -d -p 27017:27017 mongo` and `MONGODB_URI=mon
 - **Authenticate everything:** DKIM (Easy DKIM), SPF through the custom MAIL FROM domain, and DMARC on the root domain.
 - **Only email people who asked.** Never import a bought or scraped list. If bots fill your forms, turn on confirmed opt-in.
 - **Warm up a new domain.** Send to your most engaged readers first, and grow each send over a few weeks.
-- **Watch complaints and bounces.** Keep complaints under 0.1% and bounces under 2%. Mailcheap pauses a send above 0.08% complaints or 2% bounces. Add your domain to [Google Postmaster Tools](https://postmaster.google.com) to see your spam rate at Gmail.
+- **Watch complaints and bounces.** Keep complaints under 0.1% and bounces under 2%. Mailcheap pauses a send above 0.08% complaints (2 at least) or 2% bounces (5 at least). Add your domain to [Google Postmaster Tools](https://postmaster.google.com) to see your spam rate at Gmail.
 - **Make leaving easy.** Every email has one-click unsubscribe headers and a footer link, which Gmail and Yahoo require.
 - **Clean your list.** Turn on list cleanup in each newsletter's settings to stop emailing people who never open.
 - **Keep emails under 100 KB**, or Gmail clips them and hides the unsubscribe link.
