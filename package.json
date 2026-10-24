@@ -52,5 +52,10 @@
     "eslint-config-next": "16.4.1",
     "shadcn": "^4.21.1",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "@vercel/cli-config": {
+      "zod": "^4.6.7"
+    }
   }
 }
