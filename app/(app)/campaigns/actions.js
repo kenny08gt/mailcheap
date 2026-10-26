@@ -22,6 +22,7 @@ const MAX_SUBJECT_LENGTH = 200;
 const COPY_SUFFIX = " (copy)";
 // A scheduled campaign stays editable until it goes out.
 const EDITABLE_STATUSES = ["draft", "scheduled"];
+const SWITCHABLE_FORMATS = ["rich", "html"];
 
 function readAudienceLimit(value) {
 	const limit = Number(value);
@@ -67,7 +68,11 @@ export async function saveCampaign(id, values) {
 	}
 
 	// The editor opens Markdown drafts as rich text, so their first save moves them to it.
-	const format = campaign.format === "markdown" ? "rich" : campaign.format;
+	const format = SWITCHABLE_FORMATS.includes(values?.format)
+		? values.format
+		: campaign.format === "markdown"
+			? "rich"
+			: campaign.format;
 	const thumbnailUrl = firstImageUrl({ format, html: body });
 	const { matchedCount } = await Campaign.updateOne(
 		{ _id: campaign._id, status: { $in: EDITABLE_STATUSES } },

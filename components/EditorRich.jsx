@@ -19,9 +19,10 @@ const MIN_HEIGHT = "min-h-[560px]";
 export default function EditorRich({ content, onChange, onReady, savedLinks = [] }) {
 	const [isEditingLink, setIsEditingLink] = useState(false);
 	const [isInsertingButton, setIsInsertingButton] = useState(false);
+	const [initialContent] = useState(content);
 	const editor = useEditor({
 		immediatelyRender: false,
-		content,
+		content: initialContent,
 		extensions: [
 			StarterKit.configure({
 				heading: { levels: [1, 2, 3] },

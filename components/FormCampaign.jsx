@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useState, useTransition } from "react";
-import { Check, CircleAlert, Copy, FlaskConical, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Check, CircleAlert, Code, Copy, FlaskConical, Loader2, MoreHorizontal, PenLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { duplicateCampaign, saveCampaign, sendTestCampaign } from "@/app/(app)/campaigns/actions";
 import AvatarNewsletter from "@/components/AvatarNewsletter";
@@ -45,10 +45,8 @@ export default function FormCampaign({
 	aiSpend,
 	aiModels,
 }) {
-	const isHtml = campaign.format === "html";
 	const [isDiscardOpen, setIsDiscardOpen] = useState(false);
 	const [editor, setEditor] = useState(null);
-	const format = isHtml ? "html" : "rich";
 	const [initialBody] = useState(() =>
 		campaign.format === "markdown" ? markdownToHtml(campaign.markdown) : campaign.html
 	);
@@ -56,7 +54,10 @@ export default function FormCampaign({
 		subject: campaign.subject,
 		previewText: campaign.previewText,
 		body: initialBody,
+		format: campaign.format === "html" ? "html" : "rich",
 	});
+	const { format } = values;
+	const isHtml = format === "html";
 	const save = useCallback((snapshot) => saveCampaign(campaign._id, snapshot), [campaign._id]);
 	const { isDirty, isSaving, error, flush } = useAutosave(values, save);
 	const [isTesting, startTesting] = useTransition();
@@ -145,6 +146,13 @@ export default function FormCampaign({
 	const updateBody = useCallback((body) => setValues((current) => ({ ...current, body })), []);
 	const applyDraft = useCallback((draft) => setValues((current) => ({ ...current, ...draft })), []);
 
+	// The rich editor drops markup it has no node for, so HTML only goes back to rich text once it's cleared.
+	const canSwitchToRich = !values.body.trim();
+	function switchFormat() {
+		setEditor(null);
+		setValues((current) => ({ ...current, format: isHtml ? "rich" : "html" }));
+	}
+
 	const from = newsletter.fromName
 		? `${newsletter.fromName} <${newsletter.fromEmail}>`
 		: newsletter.fromEmail;
@@ -199,6 +207,10 @@ export default function FormCampaign({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
+						<DropdownMenuItem onSelect={switchFormat} disabled={isHtml && !canSwitchToRich}>
+							{isHtml ? <PenLine /> : <Code />}
+							{isHtml ? (canSwitchToRich ? "Use rich text" : "Clear HTML to use rich text") : "Use HTML"}
+						</DropdownMenuItem>
 						<DropdownMenuItem onSelect={() => runAction(duplicateCampaign)}>
 							<Copy />
 							Duplicate
@@ -277,7 +289,7 @@ export default function FormCampaign({
 							/>
 						</div>
 					) : (
-						<EditorRich content={initialBody} onChange={updateBody} onReady={setEditor} savedLinks={savedLinks} />
+						<EditorRich content={values.body}onChange={updateBody} onReady={setEditor} savedLinks={savedLinks} />
 					)}
 				</div>
 
