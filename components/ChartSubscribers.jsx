@@ -8,11 +8,16 @@ import { formatDateKey } from "@/lib/time-zone";
 // The SVG stretches to the plot; strokes keep their width with non-scaling-stroke.
 const BOX = { width: 600, height: 200 };
 
+// The axis spans at least a tenth of the list, so losing 1 of 139 reads as the small dip it is.
+function minSpanFor(values) {
+	return Math.max(4, Math.max(0, ...values) * 0.1);
+}
+
 // Subscribers at the end of each day of the period, over the period before as a dashed line.
 export default function ChartSubscribers({ current, previous }) {
 	const values = current.map(({ total }) => total);
 	const previousValues = previous.map(({ total }) => total);
-	const scale = niceScale([...values, ...previousValues]);
+	const scale = niceScale([...values, ...previousValues], 4, minSpanFor([...values, ...previousValues]));
 	const xOf = (index) => (current.length > 1 ? index / (current.length - 1) : 0);
 	const last = current.at(-1);
 
