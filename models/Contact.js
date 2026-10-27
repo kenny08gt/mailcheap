@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { AUDIENCE_SORT } from "../lib/audience.js";
 
 // pending: signed up to a newsletter that asks new subscribers to confirm, and hasn't yet.
 export const CONTACT_STATUSES = ["active", "pending", "unsubscribed", "bounced", "complained", "dormant"];
@@ -44,6 +45,9 @@ contactSchema.index({ subscribedAt: -1, _id: -1 });
 contactSchema.index({ status: 1, subscribedAt: -1, _id: -1 });
 contactSchema.index({ newsletterId: 1, subscribedAt: -1, _id: -1 });
 contactSchema.index({ newsletterId: 1, status: 1, subscribedAt: -1, _id: -1 });
+// A send reads its audience in this order, most engaged first (lib/audience.js). Without it MongoDB sorts the whole list
+// in memory, and a send to a list past its 32 MB limit fails.
+contactSchema.index({ newsletterId: 1, status: 1, ...AUDIENCE_SORT });
 // The list cleanup totals in newsletter settings.
 contactSchema.index({ newsletterId: 1, lastChanceAt: 1 }, { partialFilterExpression: { lastChanceAt: { $exists: true } } });
 
