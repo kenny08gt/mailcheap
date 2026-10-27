@@ -676,14 +676,22 @@ function CleanupTotals({ totals }) {
 		{ label: "Made dormant", value: totals.dormant },
 	];
 	return (
-		<dl className="grid grid-cols-3 divide-x divide-border/60">
-			{stats.map(({ label, value }) => (
-				<div key={label} className="flex flex-col gap-1 px-4 py-3">
-					<dt className="text-xs text-pretty text-muted-foreground">{label}</dt>
-					<dd className="text-lg font-semibold tabular-nums">{formatNumber(value)}</dd>
-				</div>
-			))}
-		</dl>
+		<>
+			<dl className="grid grid-cols-3 divide-x divide-border/60">
+				{stats.map(({ label, value }) => (
+					<div key={label} className="flex flex-col gap-1 px-4 py-3">
+						<dt className="text-xs text-pretty text-muted-foreground">{label}</dt>
+						<dd className="text-lg font-semibold tabular-nums">{formatNumber(value)}</dd>
+					</div>
+				))}
+			</dl>
+			{totals.noMailServer > 0 && (
+				<p className="border-t border-border/60 px-4 py-3 text-sm text-pretty text-muted-foreground">
+					{formatNumber(totals.noMailServer)} {totals.noMailServer === 1 ? "contact" : "contacts"} stopped because
+					their domain can&apos;t receive email. They come back on their own if it starts taking email again.
+				</p>
+			)}
+		</>
 	);
 }
 
