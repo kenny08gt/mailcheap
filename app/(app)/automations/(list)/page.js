@@ -8,6 +8,7 @@ import StateEmpty from "@/components/StateEmpty";
 import TimeLocal from "@/components/TimeLocal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CONTACT_ACTIVE } from "@/lib/automation-rules";
+import { AUTOMATIONS_TICK_ID, isTickStale } from "@/lib/automation-tick";
 import { isSendingEnabled } from "@/lib/config";
 import { connectDb } from "@/lib/db";
 import { formatNumber } from "@/lib/format";
@@ -19,7 +20,6 @@ import Newsletter from "@/models/Newsletter";
 
 export const metadata = { title: "Automations" };
 
-const STALE_TICK_MS = 30 * 60 * 1000;
 const TICK_FORMAT = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
 
 export default async function AutomationsPage() {
@@ -28,7 +28,7 @@ export default async function AutomationsPage() {
 		Automation.find().sort({ createdAt: -1 }).lean(),
 		Newsletter.find().sort({ createdAt: 1 }).select(NEWSLETTER_SUMMARY_FIELDS).lean(),
 		Enrollment.aggregate([{ $group: { _id: { a: "$automationId", s: "$status" }, n: { $sum: 1 } } }]),
-		JobRun.findById("automations-tick").lean(),
+		JobRun.findById(AUTOMATIONS_TICK_ID).lean(),
 	]);
 	const newslettersById = toNewsletterMap(newsletters);
 	const countsById = new Map();
@@ -38,7 +38,7 @@ export default async function AutomationsPage() {
 	}
 	const hasActive = automations.some(({ status }) => status === "active");
 	const isSending = isSendingEnabled();
-	const isTickStale = isStale(tick?.ranAt);
+	const isStale = isTickStale(tick?.ranAt);
 
 	return (
 		<>
@@ -47,7 +47,7 @@ export default async function AutomationsPage() {
 			</HeaderPage>
 
 			{hasActive && !isSending && <Notice>Sending is off, so automations are waiting.</Notice>}
-			{hasActive && isSending && isTickStale && (
+			{hasActive && isSending && isStale && (
 				<Notice>
 					The automations timer hasn&apos;t run since{" "}
 					{tick?.ranAt ? <TimeLocal value={tick.ranAt.toISOString()} options={TICK_FORMAT} /> : "it was set up"}. Runs
@@ -115,10 +115,6 @@ export default async function AutomationsPage() {
 			)}
 		</>
 	);
-}
-
-function isStale(ranAt) {
-	return !ranAt || Date.now() - ranAt.getTime() > STALE_TICK_MS;
 }
 
 function Notice({ children }) {
