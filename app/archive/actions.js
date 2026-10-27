@@ -8,6 +8,7 @@ import { isSendingEnabled } from "@/lib/config";
 import { upsertContact } from "@/lib/contacts";
 import { connectDb } from "@/lib/db";
 import { getInbox } from "@/lib/inbox-links";
+import { NO_MAIL_MESSAGE, canReceiveMail } from "@/lib/mail-domains";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { queueConfirmationEmail } from "@/lib/sending";
 import { normalizeEmail } from "@/lib/validation";
@@ -35,6 +36,7 @@ export async function subscribe(_state, formData) {
 		archiveEnabled: true,
 	}).lean();
 	if (!newsletter) return { error: "This newsletter is not taking signups" };
+	if (!(await canReceiveMail(email))) return { error: `${NO_MAIL_MESSAGE}. Check it for a typo.` };
 
 	if (await isRateLimited({ ...PER_NEWSLETTER, key: newsletter.slug })) {
 		after(() =>

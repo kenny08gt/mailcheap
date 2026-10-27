@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isConfirmedWithoutMail, isSuspiciousRun, nextMailDomain } from "../lib/list-hygiene-rules.js";
-import { checkMailDomain } from "../lib/mail-domains.js";
+import { canReceiveMail, checkMailDomain } from "../lib/mail-domains.js";
 import Contact from "../models/Contact.js";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -89,4 +89,25 @@ test("a stopped contact keeps why and the status to give back", () => {
 	assert.equal(contact.undeliverableFrom, "dormant");
 	contact.undeliverableReason = "made-up";
 	assert.ok(contact.validateSync()?.errors.undeliverableReason);
+});
+
+test("a signup is refused only when DNS says its domain can't receive email", async () => {
+	assert.equal(await canReceiveMail("a@dead-signup.example", { dns: fakeDns({ resolveMx: "ENOTFOUND" }) }), false);
+	assert.equal(await canReceiveMail("a@live-signup.example", { dns: fakeDns({ resolveMx: [{ exchange: "mx.live-signup.example" }] }) }), true);
+	assert.equal(await canReceiveMail("a@slow-signup.example", { dns: fakeDns({ resolveMx: "ETIMEOUT" }) }), true, "DNS not answering lets it in");
+	assert.equal(await canReceiveMail("a@gmail.com", { dns: fakeDns({ resolveMx: "ENOTFOUND" }) }), true);
+});
+
+test("a domain's answer is reused for a day, and an unanswered lookup is tried again soon", async () => {
+	const now = Date.now();
+	const dead = fakeDns({ resolveMx: "ENOTFOUND" });
+	await canReceiveMail("a@cached-signup.example", { dns: dead, now });
+	assert.equal(await canReceiveMail("b@cached-signup.example", { dns: dead, now: now + 23 * HOUR_MS }), false);
+	assert.equal(dead.calls.length, 1, "the second signup from the domain reads the cache");
+
+	const slow = fakeDns({ resolveMx: "ETIMEOUT" });
+	await canReceiveMail("a@retry-signup.example", { dns: slow, now });
+	const dead2 = fakeDns({ resolveMx: "ENOTFOUND" });
+	assert.equal(await canReceiveMail("a@retry-signup.example", { dns: dead2, now: now + 11 * 60 * 1000 }), false);
+	assert.equal(dead2.calls.length, 1, "asked again after 10 minutes");
 });
