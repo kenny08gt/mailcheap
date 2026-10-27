@@ -1,18 +1,16 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { Types, isValidObjectId } from "mongoose";
 import { Send } from "lucide-react";
 import ButtonNewCampaign from "@/components/ButtonNewCampaign";
 import FilterNewsletter from "@/components/FilterNewsletter";
+import FilterPills from "@/components/FilterPills";
 import HeaderPage from "@/components/HeaderPage";
 import StateEmpty from "@/components/StateEmpty";
 import TableCampaigns from "@/components/TableCampaigns";
 import { getIssuePageUrl } from "@/lib/archive-data";
 import { recentCampaignsPipeline } from "@/lib/campaign-queries";
 import { connectDb } from "@/lib/db";
-import { formatNumber } from "@/lib/format";
 import { NEWSLETTER_SUMMARY_FIELDS, toNewsletterMap, toNewsletterOptions } from "@/lib/newsletters";
-import { cn } from "@/lib/utils";
 import Campaign from "@/models/Campaign";
 import Newsletter from "@/models/Newsletter";
 
@@ -65,34 +63,18 @@ export default async function CampaignsPage({ searchParams }) {
 
 			<div className="flex flex-col gap-4">
 				<div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<nav
-						aria-label="Status"
-						className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 animate-enter [scrollbar-width:none]"
-					>
-						{[null, ...STATUSES].map((key) => {
-							const isActive = key === status;
-							if (key && !isActive && !counts[key]) return null;
-							return (
-								<Link
-									key={key ?? "all"}
-									href={href(key)}
-									scroll={false}
-									aria-current={isActive ? "page" : undefined}
-									className={cn(
-										"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-[color,background-color,box-shadow] duration-150",
-										isActive
-											? "bg-foreground text-background"
-											: "text-muted-foreground hover:bg-muted hover:text-foreground"
-									)}
-								>
-									{key ? key.charAt(0).toUpperCase() + key.slice(1) : "All"}
-									<span className={cn("text-xs tabular-nums", isActive ? "opacity-70" : "opacity-60")}>
-										{formatNumber(key ? counts[key] || 0 : totalAll)}
-									</span>
-								</Link>
-							);
-						})}
-					</nav>
+					<FilterPills
+						label="Status"
+						className="animate-enter"
+						items={[null, ...STATUSES].map((key) => ({
+							key: key ?? "all",
+							label: key ? key.charAt(0).toUpperCase() + key.slice(1) : "All",
+							count: key ? counts[key] : totalAll,
+							href: href(key),
+							isActive: key === status,
+							isAll: !key,
+						}))}
+					/>
 					{newsletters.length > 1 && (
 						<Suspense>
 							<FilterNewsletter newsletters={toNewsletterOptions(newsletters)} />
