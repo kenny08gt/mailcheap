@@ -22,6 +22,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { toSearchPattern } from "@/lib/contact-search";
 import { connectDb } from "@/lib/db";
 import { formatDate, formatNumber } from "@/lib/format";
 import { NEWSLETTER_SUMMARY_FIELDS, toNewsletterMap, toNewsletterOptions } from "@/lib/newsletters";
@@ -45,9 +46,10 @@ export default async function ContactsPage({ searchParams }) {
 	const newsletterOptions = toNewsletterOptions(newsletters);
 	const newsletterMap = toNewsletterMap(newsletters);
 
+	const pattern = toSearchPattern(query);
 	const baseFilter = {
 		...(newsletterId && { newsletterId: new Types.ObjectId(newsletterId) }),
-		...(query && { email: { $regex: `^${escapeRegex(query)}` } }),
+		...(pattern && { email: { $regex: pattern } }),
 	};
 	const filter = { ...baseFilter, ...(status && { status }) };
 
@@ -217,9 +219,6 @@ function gravatarHash(email) {
 	return crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
 }
 
-function escapeRegex(value) {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function engagement(contact, statKey, importedKey) {
 	if (contact.stats?.[statKey]) return formatNumber(contact.stats[statKey]);

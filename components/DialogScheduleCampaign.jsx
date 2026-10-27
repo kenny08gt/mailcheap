@@ -105,7 +105,7 @@ export default function DialogScheduleCampaign({
 					{scheduledAt ? (isClient ? formatSendTime(scheduledAt) : "Scheduled") : "Schedule"}
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>{scheduledAt ? "Change the schedule" : "Schedule"}</DialogTitle>
 					<DialogDescription className="tabular-nums">
