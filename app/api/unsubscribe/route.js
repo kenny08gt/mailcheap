@@ -21,13 +21,11 @@ async function creditLatestCampaign({ contactId, newsletterId }) {
 		.select({ _id: 1 })
 		.lean();
 	for (const { _id } of campaigns) {
-		const wasSent = await Message.exists({
-			kind: "campaign",
-			campaignId: _id,
-			contactId,
-			sentAt: { $ne: null },
-		});
-		if (!wasSent) continue;
+		const { matchedCount } = await Message.updateOne(
+			{ kind: "campaign", campaignId: _id, contactId, sentAt: { $ne: null } },
+			{ $set: { unsubscribedAt: new Date() } }
+		);
+		if (!matchedCount) continue;
 		await Campaign.updateOne({ _id }, { $inc: { "stats.unsubscribed": 1 } });
 		return;
 	}

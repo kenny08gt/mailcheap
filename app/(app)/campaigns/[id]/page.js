@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import CampaignReport from "@/components/CampaignReport";
 import FormCampaign from "@/components/FormCampaign";
 import { getArchiveUrls } from "@/lib/archive-hosts";
-import { getLinkClicks, getProviderBreakdowns } from "@/lib/campaign-engagement";
+import { getLinkClicks, getProviderBreakdowns, getRecipients } from "@/lib/campaign-engagement";
+import { RECIPIENT_FILTERS } from "@/lib/campaign-recipients";
 import { sendTimesPipeline } from "@/lib/campaign-queries";
 import { getRecentAiSpend } from "@/lib/ai";
 import { getDefaultModel, getModelOptions } from "@/lib/ai-assistant";
@@ -17,8 +18,10 @@ import Newsletter from "@/models/Newsletter";
 
 export const metadata = { title: "Campaign" };
 
-export default async function CampaignPage({ params }) {
-	const { id } = await params;
+const RECIPIENTS_PAGE_SIZE = 50;
+
+export default async function CampaignPage({ params, searchParams }) {
+	const [{ id }, query] = await Promise.all([params, searchParams]);
 	if (!isValidObjectId(id)) notFound();
 
 	await connectDb();
@@ -28,10 +31,13 @@ export default async function CampaignPage({ params }) {
 	if (!newsletter) notFound();
 
 	if (!["draft", "scheduled"].includes(campaign.status)) {
-		const [providers, links, remainingCount] = await Promise.all([
+		const filter = Object.hasOwn(RECIPIENT_FILTERS, query.recipients) ? query.recipients : "all";
+		const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+		const [providers, links, remainingCount, recipients] = await Promise.all([
 			getProviderBreakdowns([campaign._id]),
 			getLinkClicks([campaign._id]),
 			countRemaining(campaign),
+			getRecipients(campaign._id, { filter, page, pageSize: RECIPIENTS_PAGE_SIZE }),
 		]);
 		return (
 			<CampaignReport
@@ -40,6 +46,7 @@ export default async function CampaignPage({ params }) {
 				providers={providers.get(String(campaign._id))}
 				links={links.get(String(campaign._id))}
 				remainingCount={remainingCount}
+				recipients={{ ...serialize(recipients), filter, page, pageSize: RECIPIENTS_PAGE_SIZE }}
 			/>
 		);
 	}

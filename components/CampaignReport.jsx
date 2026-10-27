@@ -15,6 +15,7 @@ import HeaderPage from "@/components/HeaderPage";
 import ImageFavicon from "@/components/ImageFavicon";
 import InputCampaignSlug from "@/components/InputCampaignSlug";
 import PreviewEmail from "@/components/PreviewEmail";
+import TableRecipients, { recipientsHref } from "@/components/TableRecipients";
 import TextEmpty from "@/components/TextEmpty";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,11 +33,19 @@ import { rateTone } from "@/lib/health";
 import { PROVIDER_DOMAINS, PROVIDER_LABELS } from "@/lib/providers";
 import { UNSUBSCRIBE_PLACEHOLDER, renderEmail, withResponsiveImages } from "@/lib/render-email";
 
-export default function CampaignReport({ campaign, newsletter, providers, links = [], remainingCount = 0 }) {
+export default function CampaignReport({
+	campaign,
+	newsletter,
+	providers,
+	links = [],
+	remainingCount = 0,
+	recipients,
+}) {
 	const { stats } = campaign;
 	const id = campaign._id.toString();
 	const isOnArchive = newsletter.archiveEnabled && Boolean(campaign.archiveSlug) && campaign.archiveListed !== false;
 	const reached = stats.delivered || stats.sent;
+	const filterHref = (filter) => recipientsHref(id, { filter });
 	const progress = stats.recipients ? Math.min(stats.sent / stats.recipients, 1) : 0;
 	const { html } = renderEmail({
 		format: campaign.format,
@@ -123,33 +132,39 @@ export default function CampaignReport({ campaign, newsletter, providers, links 
 				>
 					<CardStat
 						label="Delivered"
+						href={filterHref(null)}
 						value={formatRate(stats.delivered, stats.sent)}
 						detail={formatNumber(stats.delivered)}
 					/>
 					<CardStat
 						label="Opened"
+						href={filterHref("opened")}
 						value={formatRate(stats.opened, reached)}
 						detail={formatNumber(stats.opened)}
 					/>
 					<CardStat
 						label="Clicked"
+						href={filterHref("clicked")}
 						value={formatRate(stats.clicked, reached)}
 						detail={formatNumber(stats.clicked)}
 					/>
 					<CardStat
 						label="Bounced"
+						href={filterHref("bounced")}
 						value={formatRate(stats.bounced, stats.sent, 2)}
 						detail={formatNumber(stats.bounced)}
 						tone={rateTone(stats.bounced, stats.sent, LIMITS.bounceRate)}
 					/>
 					<CardStat
 						label="Complaints"
+						href={filterHref("complained")}
 						value={formatRate(stats.complained, stats.sent, 3)}
 						detail={formatNumber(stats.complained)}
 						tone={rateTone(stats.complained, stats.sent, LIMITS.complaintRate)}
 					/>
 					<CardStat
 						label="Unsubscribed"
+						href={filterHref("unsubscribed")}
 						value={formatRate(stats.unsubscribed, reached, 2)}
 						detail={formatNumber(stats.unsubscribed)}
 					/>
@@ -237,6 +252,12 @@ export default function CampaignReport({ campaign, newsletter, providers, links 
 								))}
 							</TableBody>
 						</Table>
+					</div>
+				)}
+
+				{recipients && (
+					<div style={{ "--stagger": 2 }} className="animate-enter">
+						<TableRecipients campaignId={id} {...recipients} />
 					</div>
 				)}
 

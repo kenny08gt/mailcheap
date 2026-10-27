@@ -32,6 +32,8 @@ const messageSchema = new mongoose.Schema(
 		clickedUrls: { type: [String], default: undefined },
 		bouncedAt: Date,
 		complainedAt: Date,
+		// Set when this email's unsubscribe link was used (app/api/unsubscribe), so the report can list who left.
+		unsubscribedAt: Date,
 	},
 	{ timestamps: true }
 );
