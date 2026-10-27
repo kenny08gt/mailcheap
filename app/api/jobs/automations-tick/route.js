@@ -1,21 +1,15 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { runAutomationTick } from "@/lib/automations";
 import { sendDueCampaignReport } from "@/lib/campaign-reports";
 import { isSendingEnabled } from "@/lib/config";
+import { refuseUnauthorizedJob } from "@/lib/job-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-function isAuthorized(request) {
-	const given = Buffer.from(request.headers.get("authorization") ?? "");
-	const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`);
-	return given.length === expected.length && timingSafeEqual(given, expected);
-}
-
 export async function POST(request) {
-	if (!process.env.CRON_SECRET) return NextResponse.json({ error: "CRON_SECRET is not set" }, { status: 503 });
-	if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const refused = refuseUnauthorizedJob(request);
+	if (refused) return refused;
 	if (!isSendingEnabled()) return NextResponse.json({ error: "Sending is off" }, { status: 409 });
 
 	const result = await runAutomationTick();

@@ -148,7 +148,12 @@ export default async function ContactsPage({ searchParams }) {
 											</span>
 										</TableCell>
 										<TableCell>
-											<BadgeStatus status={contact.status} />
+											<span className="flex items-center gap-2">
+												<BadgeStatus status={contact.status} />
+												{contact.undeliverableReason === "no-mail-server" && (
+													<span className="text-xs whitespace-nowrap text-muted-foreground">No mail server</span>
+												)}
+											</span>
 										</TableCell>
 										{!newsletterId && (
 											<TableCell className="hidden text-muted-foreground md:table-cell">

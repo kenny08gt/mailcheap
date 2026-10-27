@@ -4,6 +4,7 @@ import AvatarNewsletter from "@/components/AvatarNewsletter";
 import FormNewsletter from "@/components/FormNewsletter";
 import HeaderPage from "@/components/HeaderPage";
 import { cleanupTotalsPipeline } from "@/lib/cleanup";
+import { countStoppedContacts } from "@/lib/list-hygiene";
 import { isSendingEnabled, isUploadEnabled } from "@/lib/config";
 import { connectDb } from "@/lib/db";
 import { serialize } from "@/lib/serialize";
@@ -50,6 +51,7 @@ export default async function NewsletterPage({ params }) {
 }
 
 async function getCleanupTotals(newsletterId) {
-	const [totals] = await Contact.aggregate(cleanupTotalsPipeline(new Types.ObjectId(newsletterId)));
-	return { waiting: totals?.waiting ?? 0, kept: totals?.kept ?? 0, dormant: totals?.dormant ?? 0 };
+	const id = new Types.ObjectId(newsletterId);
+	const [[totals], noMailServer] = await Promise.all([Contact.aggregate(cleanupTotalsPipeline(id)), countStoppedContacts(id)]);
+	return { waiting: totals?.waiting ?? 0, kept: totals?.kept ?? 0, dormant: totals?.dormant ?? 0, noMailServer };
 }

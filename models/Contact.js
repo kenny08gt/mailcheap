@@ -21,6 +21,11 @@ const contactSchema = new mongoose.Schema(
 		ignoredIssues: { type: Number },
 		lastEngagedAt: { type: Date },
 		lastChanceAt: { type: Date },
+		// The list hygiene (lib/list-hygiene.js) stopped it as bounced: why, when, and the status to give back once the
+		// domain takes email again. Never a suppression, so it can be undone; a real bounce has none of these.
+		undeliverableReason: { type: String, enum: ["no-mail-server"] },
+		undeliverableAt: { type: Date },
+		undeliverableFrom: { type: String },
 		stats: {
 			sent: { type: Number, default: 0 },
 			opens: { type: Number, default: 0 },
