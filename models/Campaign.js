@@ -22,6 +22,8 @@ const campaignSchema = new mongoose.Schema(
 		startedAt: { type: Date },
 		sentAt: { type: Date },
 		testSentAt: { type: Date },
+		// When the results email went to ADMIN_EMAIL, a few days after the send (lib/campaign-reports.js).
+		reportSentAt: { type: Date },
 		archiveSlug: { type: String, trim: true, lowercase: true },
 		thumbnailUrl: { type: String, trim: true },
 		// Unlisted issues keep their /p/slug page but stay off the archive index.

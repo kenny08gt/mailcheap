@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { runAutomationTick } from "@/lib/automations";
+import { sendDueCampaignReport } from "@/lib/campaign-reports";
 import { isSendingEnabled } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -19,5 +20,13 @@ export async function POST(request) {
 
 	const result = await runAutomationTick();
 	console.info(`[automations] ${JSON.stringify(result)}`);
-	return NextResponse.json(result);
+
+	// Rides on this timer rather than its own; a failure here never holds up the automations above.
+	let report = null;
+	try {
+		report = await sendDueCampaignReport();
+	} catch (error) {
+		console.error("[reports] Could not send a campaign report:", error);
+	}
+	return NextResponse.json({ ...result, report });
 }
