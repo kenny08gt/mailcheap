@@ -4,6 +4,8 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DAYS_SHOWN = 14;
+// Matches the server's limit in lib/schedule.js.
+const MAX_DAYS_AHEAD = 365;
 const MINUTES_PER_DAY = 24 * 60;
 const DEFAULT_MINUTES = [9 * 60, 12 * 60, 18 * 60];
 const MAX_USUAL_TIMES = 3;
@@ -41,6 +43,15 @@ export default function PickerSendTime({ value, onChange, suggestions, history }
 						/>
 					))}
 				</div>
+				<input
+					type="date"
+					min={toDateValue(today)}
+					max={toDateValue(addDays(today, MAX_DAYS_AHEAD))}
+					value={toDateValue(value)}
+					onChange={(event) => event.target.value && onChange(atMinutes(fromDateValue(event.target.value), minutes))}
+					aria-label="Other date"
+					className="h-8 self-start rounded-full bg-transparent px-3 text-sm tabular-nums shadow-border outline-none [color-scheme:light_dark] focus-visible:ring-2 focus-visible:ring-ring/50"
+				/>
 			</Field>
 			<Field label="Time">
 				<div role="radiogroup" aria-label="Time" className="flex flex-wrap items-center gap-1.5">
@@ -202,6 +213,15 @@ function toTimeValue(minutes) {
 function fromTimeValue(value) {
 	const [hours, minutes] = value.split(":").map(Number);
 	return hours * 60 + minutes;
+}
+
+function toDateValue(date) {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function fromDateValue(value) {
+	const [year, month, day] = value.split("-").map(Number);
+	return new Date(year, month - 1, day);
 }
 
 function formatTime(date) {
