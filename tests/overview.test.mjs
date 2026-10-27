@@ -107,3 +107,12 @@ test("chart axes round to readable steps around the data", () => {
 	assert.deepEqual(niceScale([]).ticks, [0, 1]);
 	assert.equal(linePath([0, 10], { min: 0, max: 10 }, { width: 100, height: 50 }), "M0,50L100,0");
 });
+
+test("a minimum span keeps a one-subscriber change from filling the chart", () => {
+	const scale = niceScale([139, 138], 4, 14);
+	assert.ok(scale.max - scale.min >= 14);
+	assert.ok(scale.min <= 138 && scale.max >= 139);
+	assert.ok(scale.min >= 0);
+	assert.ok(niceScale([1, 0], 4, 4).min >= 0);
+	assert.deepEqual(niceScale([2187, 2350], 4, 10), niceScale([2187, 2350]));
+});
