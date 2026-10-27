@@ -7,6 +7,7 @@ import { isSendingEnabled } from "@/lib/config";
 import { upsertContact } from "@/lib/contacts";
 import { connectDb } from "@/lib/db";
 import { getInbox } from "@/lib/inbox-links";
+import { NO_MAIL_MESSAGE, canReceiveMail } from "@/lib/mail-domains";
 import { isRateLimited } from "@/lib/rate-limit";
 import { queueConfirmationEmail } from "@/lib/sending";
 import { isPlainObject, normalizeEmail } from "@/lib/validation";
@@ -72,6 +73,7 @@ export async function POST(request) {
 	await connectDb();
 	const newsletter = await Newsletter.findOne({ slug: input.slug }).lean();
 	if (!newsletter) return fail(404, "Newsletter not found");
+	if (!(await canReceiveMail(input.email))) return fail(400, NO_MAIL_MESSAGE);
 
 	const { contact, created } = await upsertContact({
 		newsletter,
