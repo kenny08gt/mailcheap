@@ -1,15 +1,23 @@
+import Link from "next/link";
 import TextEmpty from "@/components/TextEmpty";
 import { cn } from "@/lib/utils";
 
-export default function CardStat({ label, value, detail, tone = "default" }) {
+export default function CardStat({ label, value, detail, tone = "default", href }) {
+	const Root = href ? Link : "div";
 	return (
-		<div className="flex flex-col gap-1.5 rounded-xl bg-card p-4 shadow-border">
+		<Root
+			href={href}
+			className={cn(
+				"flex flex-col gap-1.5 rounded-xl bg-card p-4 shadow-border",
+				href && "transition-colors duration-150 hover:bg-muted/40"
+			)}
+		>
 			<span className="text-[13px] text-muted-foreground">{label}</span>
 			<span className={cn("text-2xl font-semibold tracking-tight tabular-nums", VALUE_TONES[tone])}>
 				{value ?? <TextEmpty />}
 			</span>
 			{detail && <span className="text-xs text-muted-foreground tabular-nums">{detail}</span>}
-		</div>
+		</Root>
 	);
 }
 

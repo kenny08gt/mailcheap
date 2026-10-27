@@ -33,6 +33,8 @@ const STATUS_TONES = {
 	active: "green",
 	sent: "green",
 	delivered: "green",
+	opened: "green",
+	clicked: "green",
 	success: "green",
 	verified: "green",
 	healthy: "green",
