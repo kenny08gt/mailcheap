@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getConfirmationContent, getDefaultConfirmation } from "../lib/confirmation-content.js";
+import { KEEP_URL_PLACEHOLDER, getLastChanceContent } from "../lib/last-chance-content.js";
+import { UNSUBSCRIBE_PLACEHOLDER, renderEmail } from "../lib/render-email.js";
 import { getLanguage, getSubscriberStrings, getUnsubscribeCopy } from "../lib/subscriber-strings.js";
 
 const VIEWS = ["invalid", "confirm", "error", "done"];
@@ -85,9 +87,68 @@ test("the built-in confirmation email follows the newsletter's language", () => 
 	assert.equal(getDefaultConfirmation({}).subject, "Confirma tu suscripción a el boletín");
 });
 
-test("English copy has no em dashes", () => {
-	assert.ok(!allText(getSubscriberStrings("en")).includes("—"));
+test("English copy has no em dashes and no Spanish", () => {
+	const english = allText(getSubscriberStrings("en"));
+	assert.ok(!english.includes("—"));
+	assert.ok(!/[áéíóúñ¿¡]/.test(english));
 	assert.ok(!Object.values(getDefaultConfirmation({ name: "Freezelog", language: "en" })).join("").includes("—"));
+});
+
+const SOCIAL = { socialLinks: ["https://www.instagram.com/freezelog"], footerSocial: { enabled: true } };
+
+function footerOf(newsletter) {
+	const { html, text } = renderEmail({ markdown: "Hi", subject: "Hi", newsletter });
+	return { html: html.slice(html.lastIndexOf("border-top")), text: text.slice(text.lastIndexOf("—")) };
+}
+
+test("the email footer speaks the newsletter's language", () => {
+	const en = footerOf({ name: "Freezelog", language: "en", ...SOCIAL });
+	assert.ok(en.html.includes("You&#39;re getting this email because you subscribed to Freezelog."));
+	assert.ok(en.html.includes(">Unsubscribe</a>"));
+	assert.ok(en.html.includes(">Follow us</div>"));
+	assert.ok(en.text.includes("You're getting this email because you subscribed to Freezelog."));
+	assert.ok(en.text.includes(`Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`));
+	assert.ok(en.text.includes("Follow us: Instagram https://www.instagram.com/freezelog"));
+	assert.ok(!/[áéíóúñ¿¡]|Recibes|Síguenos/.test(en.html + en.text), "nothing Spanish left in the footer");
+
+	for (const newsletter of [{ name: "Field notes", ...SOCIAL }, { name: "Field notes", language: "es", ...SOCIAL }]) {
+		const es = footerOf(newsletter);
+		assert.ok(es.html.includes("Recibes este correo porque te suscribiste a Field notes."));
+		assert.ok(es.html.includes(">Cancelar suscripción</a>"));
+		assert.ok(es.html.includes(">Síguenos</div>"));
+		assert.ok(es.text.includes(`Cancelar suscripción: ${UNSUBSCRIBE_PLACEHOLDER}`));
+	}
+
+	const ownLine = footerOf({ name: "Freezelog", language: "en", ...SOCIAL, footerSocial: { enabled: true, text: "Find us" } });
+	assert.ok(ownLine.html.includes(">Find us</div>"), "a newsletter's own line wins over the default");
+	assert.ok(footerOf({ language: "en" }).text.includes("because you subscribed to this newsletter."));
+});
+
+test("the last-chance email follows the newsletter's language", () => {
+	const es = getLastChanceContent({ name: "Field notes" });
+	assert.equal(es.subject, "¿Todavía quieres recibir Field notes?");
+	assert.ok(es.markdown.includes(">Sí, sigan enviándolo</a>"));
+
+	const en = getLastChanceContent({ name: "Freezelog", language: "en" });
+	assert.equal(en.subject, "Do you still want Freezelog?");
+	assert.equal(en.previewText, "Click the button and we'll keep sending it.");
+	assert.ok(en.markdown.includes(`href="${KEEP_URL_PLACEHOLDER}"`));
+	assert.ok(en.markdown.includes(">Yes, keep sending it</a>"));
+	assert.ok(en.markdown.endsWith("If we don't hear from you, this is the last email from Freezelog you'll get."));
+	assert.ok(!/[áéíóúñ¿¡]/.test(Object.values(en).join("\n")));
+});
+
+test("the keep page speaks the newsletter's language", () => {
+	const es = getSubscriberStrings(undefined).keep;
+	assert.equal(es.pageTitle, "Seguir recibiendo el boletín");
+	assert.equal(es.title("Field notes"), "¿Seguir recibiendo Field notes?");
+	assert.equal(es.button, "Sí, sigan enviándolo");
+
+	const en = getSubscriberStrings("en").keep;
+	assert.equal(en.pageTitle, "Keep getting the newsletter");
+	assert.equal(en.title("Freezelog"), "Keep getting Freezelog?");
+	assert.equal(en.doneTitle("Freezelog"), "You'll keep getting Freezelog");
+	assert.equal(en.button, "Yes, keep sending it");
 });
 
 test("a saved copy of the built-in email follows a later language change", () => {

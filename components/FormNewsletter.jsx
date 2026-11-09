@@ -20,8 +20,8 @@ import { KEEP_URL_PLACEHOLDER, getLastChanceContent } from "@/lib/last-chance-co
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { UNSUBSCRIBE_PLACEHOLDER, renderEmail } from "@/lib/render-email";
 import { slugify } from "@/lib/slug";
-import { DEFAULT_FOOTER_SOCIAL_TEXT, MAX_FOOTER_SOCIAL_TEXT_LENGTH, parseSocialLinks } from "@/lib/social";
-import { LANGUAGES, getLanguage } from "@/lib/subscriber-strings";
+import { MAX_FOOTER_SOCIAL_TEXT_LENGTH, parseSocialLinks } from "@/lib/social";
+import { LANGUAGES, getLanguage, getSubscriberStrings } from "@/lib/subscriber-strings";
 import { IMAGE_TYPES, prepareImage, uploadImage } from "@/lib/upload-image";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +82,7 @@ export default function FormNewsletter({
 	const previewNewsletter = useMemo(
 		() => ({
 			name,
+			language,
 			imageUrl: previewImageUrl,
 			postalAddress: newsletter?.postalAddress,
 			headerImageUrl: isHttpsUrl(headerImageUrl) ? headerImageUrl : "",
@@ -90,7 +91,7 @@ export default function FormNewsletter({
 			socialLinks: parseSocialLinks(previewSocialLinks).links ?? [],
 			footerSocial,
 		}),
-		[name, previewImageUrl, newsletter?.postalAddress, headerImageUrl, websiteUrl, theme, previewSocialLinks, footerSocial]
+		[name, language, previewImageUrl, newsletter?.postalAddress, headerImageUrl, websiteUrl, theme, previewSocialLinks, footerSocial]
 	);
 
 	const welcomeHtml = useMemo(
@@ -119,13 +120,13 @@ export default function FormNewsletter({
 	);
 
 	const lastChance = useMemo(() => {
-		const content = getLastChanceContent({ name, fromEmail });
+		const content = getLastChanceContent({ name, language });
 		const { html } = renderEmail({ ...content, newsletter: previewNewsletter });
 		return {
 			...content,
 			html: html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, "#").replaceAll(KEEP_URL_PLACEHOLDER, "#"),
 		};
-	}, [name, fromEmail, previewNewsletter]);
+	}, [name, language, previewNewsletter]);
 
 	const fromDomain = fromEmail.split("@")[1]?.trim().toLowerCase();
 	const isDomainUnverified =
@@ -587,7 +588,7 @@ export default function FormNewsletter({
 					Sent issues get a page at /archive/{slug || "slug"}, with a signup form. To serve it on its own domain, add
 					the domain to ARCHIVE_HOSTS.
 				</p>
-				<Field label="Language" hint="For the confirm and unsubscribe pages and the built-in confirmation email">
+				<Field label="Language" hint="For the email footer, the confirm, unsubscribe and keep pages, and the built-in confirmation and last-chance emails">
 					<Select name="language" value={language} onValueChange={setLanguage}>
 						<SelectTrigger aria-label="Language" className="w-40">
 							<SelectValue />
@@ -653,7 +654,7 @@ export default function FormNewsletter({
 						value={footerSocial.text}
 						onChange={(event) => setFooterSocial((current) => ({ ...current, text: event.target.value }))}
 						maxLength={MAX_FOOTER_SOCIAL_TEXT_LENGTH}
-						placeholder={DEFAULT_FOOTER_SOCIAL_TEXT}
+						placeholder={getSubscriberStrings(language).footer.follow}
 					/>
 				</Field>
 			</Section>
