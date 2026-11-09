@@ -5,9 +5,11 @@ import { Link2Off, Loader2, MailCheck } from "lucide-react";
 import { confirmSubscription } from "@/app/confirm/actions";
 import CardNotice from "@/components/CardNotice";
 import { Button } from "@/components/ui/button";
+import { getSubscriberStrings } from "@/lib/subscriber-strings";
 
 // Link scanners open the page without submitting forms, so only a person's browser confirms.
-export default function FormConfirm({ token, newsletterName, fromName, fromEmail, archiveUrl }) {
+export default function FormConfirm({ token, language, newsletterName, fromName, fromEmail, archiveUrl }) {
+	const strings = getSubscriberStrings(language);
 	const [state, action, isPending] = useActionState(confirmSubscription.bind(null, token), null);
 	const formRef = useRef(null);
 
@@ -17,13 +19,14 @@ export default function FormConfirm({ token, newsletterName, fromName, fromEmail
 
 	if (state?.ok) {
 		return (
-			<CardNotice icon={MailCheck} tone="success" title="¡Listo, ya estás dentro!">
-				El próximo envío de {newsletterName} llegará de{" "}
+			<CardNotice icon={MailCheck} tone="success" title={strings.confirm.doneTitle}>
+				{strings.confirm.doneFrom(newsletterName)}
 				<span className="font-medium text-foreground">{fromName || fromEmail}</span>
-				{fromName && ` (${fromEmail})`}. Si llega a Promociones, arrástralo a Principal.
+				{fromName && ` (${fromEmail})`}
+				{strings.confirm.donePromotions}
 				{archiveUrl && (
 					<Button asChild size="lg" variant="outline" className="mt-6 w-full">
-						<a href={archiveUrl}>Ver envíos anteriores</a>
+						<a href={archiveUrl}>{strings.confirm.archive}</a>
 					</Button>
 				)}
 			</CardNotice>
@@ -32,8 +35,8 @@ export default function FormConfirm({ token, newsletterName, fromName, fromEmail
 
 	if (state?.error) {
 		return (
-			<CardNotice icon={Link2Off} title="Este enlace no funciona">
-				Puede que tenga más de 30 días. Suscríbete de nuevo y usa el correo de confirmación más reciente.
+			<CardNotice icon={Link2Off} title={strings.brokenLinkTitle}>
+				{strings.confirm.expired}
 			</CardNotice>
 		);
 	}
@@ -42,12 +45,12 @@ export default function FormConfirm({ token, newsletterName, fromName, fromEmail
 		<CardNotice
 			icon={isPending ? Loader2 : MailCheck}
 			spin={isPending}
-			title={`Confirma tu suscripción a ${newsletterName}`}
+			title={strings.confirm.title(newsletterName)}
 		>
-			Un clic y el próximo envío llegará a tu bandeja.
+			{strings.confirm.body}
 			<form ref={formRef} action={action} className="mt-6">
 				<Button type="submit" size="lg" disabled={isPending} className="w-full">
-					{isPending ? "Confirmando…" : "Confirmar mi suscripción"}
+					{isPending ? strings.confirm.pending : strings.confirm.button}
 				</Button>
 			</form>
 		</CardNotice>

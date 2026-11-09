@@ -1,30 +1,38 @@
+import { cache } from "react";
 import { CircleAlert, Link2Off, MailCheck, MailX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { connectDb } from "@/lib/db";
+import { getLanguage, getSubscriberStrings, getUnsubscribeCopy } from "@/lib/subscriber-strings";
 import { verifyUnsubscribeToken } from "@/lib/unsubscribe";
 import Contact from "@/models/Contact";
 import Newsletter from "@/models/Newsletter";
 
 // The URL carries the unsubscribe token: keep it out of search results and referrer headers.
-export const metadata = {
-	title: "Cancelar suscripción",
-	robots: { index: false, follow: false },
-	referrer: "no-referrer",
-};
+export async function generateMetadata({ searchParams }) {
+	const { subscription } = await getUnsubscribe((await searchParams).token);
+	return {
+		title: getSubscriberStrings(getLanguage(subscription)).unsubscribe.pageTitle,
+		robots: { index: false, follow: false },
+		referrer: "no-referrer",
+	};
+}
 
 const SUBSCRIBED_STATUSES = ["active", "dormant"];
+const ICONS = { invalid: Link2Off, confirm: MailX, error: CircleAlert, done: MailCheck };
 
 export default async function UnsubscribePage({ searchParams }) {
 	const { token, status } = await searchParams;
-	const validToken = typeof token === "string" ? token : null;
-	const reference = verifyUnsubscribeToken(validToken);
-	const subscription = reference ? await getSubscription(reference) : null;
+	const { validToken, reference, subscription } = await getUnsubscribe(token);
 	const view = getView({ reference, status, subscription });
-	const { icon: Icon, title, description } = getCopy(view, subscription?.newsletterName);
+	// Without a newsletter (a broken link, or the database didn't answer), the page stays Spanish.
+	const language = getLanguage(subscription);
+	const strings = getSubscriberStrings(language);
+	const { title, description } = getUnsubscribeCopy({ view, newsletterName: subscription?.newsletterName, language });
+	const Icon = ICONS[view];
 	const hasForm = view === "confirm" || view === "error";
 
 	return (
-		<main className="flex min-h-dvh items-center justify-center bg-background px-4 py-16">
+		<main lang={language} className="flex min-h-dvh items-center justify-center bg-background px-4 py-16">
 			<div className="w-full max-w-sm rounded-xl bg-card p-6 text-center shadow-border sm:p-8">
 				<div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
 					<Icon className="size-5" aria-hidden="true" />
@@ -38,7 +46,7 @@ export default async function UnsubscribePage({ searchParams }) {
 					<form method="post" action={`/api/unsubscribe?token=${validToken}`} className="mt-6">
 						<input type="hidden" name="source" value="page" />
 						<Button type="submit" size="lg" className="w-full">
-							Cancelar suscripción
+							{strings.unsubscribe.button}
 						</Button>
 					</form>
 				)}
@@ -47,15 +55,24 @@ export default async function UnsubscribePage({ searchParams }) {
 	);
 }
 
+// The metadata and the page both need the subscription: one query per request.
+const getUnsubscribe = cache(async (token) => {
+	const validToken = typeof token === "string" ? token : null;
+	const reference = verifyUnsubscribeToken(validToken);
+	const subscription = reference ? await getSubscription(reference) : null;
+	return { validToken, reference, subscription };
+});
+
 async function getSubscription({ contactId, newsletterId }) {
 	try {
 		await connectDb();
 		const [newsletter, contact] = await Promise.all([
-			Newsletter.findById(newsletterId).select({ name: 1 }).lean(),
+			Newsletter.findById(newsletterId).select({ name: 1, language: 1 }).lean(),
 			Contact.findOne({ _id: contactId, newsletterId }).select({ status: 1 }).lean(),
 		]);
 		return {
 			newsletterName: newsletter?.name,
+			language: getLanguage(newsletter),
 			isSubscribed: !contact || SUBSCRIBED_STATUSES.includes(contact.status),
 		};
 	} catch (error) {
@@ -68,31 +85,4 @@ function getView({ reference, status, subscription }) {
 	if (!reference) return "invalid";
 	if (status === "done" || status === "error") return status;
 	return subscription?.isSubscribed === false ? "done" : "confirm";
-}
-
-function getCopy(view, newsletterName) {
-	const name = newsletterName || "este boletín";
-	return {
-		invalid: {
-			icon: Link2Off,
-			title: "Este enlace no funciona",
-			description:
-				"Abre de nuevo el enlace para cancelar la suscripción desde el correo, o responde al correo para pedir que te quitemos de la lista.",
-		},
-		confirm: {
-			icon: MailX,
-			title: `¿Cancelar tu suscripción a ${name}?`,
-			description: "Dejarás de recibir sus correos.",
-		},
-		error: {
-			icon: CircleAlert,
-			title: "Algo salió mal",
-			description: `Sigues suscrito a ${name}. Inténtalo de nuevo en un minuto.`,
-		},
-		done: {
-			icon: MailCheck,
-			title: "Cancelaste tu suscripción",
-			description: `Ya no recibirás correos de ${name}.`,
-		},
-	}[view];
 }

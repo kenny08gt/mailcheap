@@ -14,6 +14,7 @@ import { THEME_COLORS, parseTheme } from "@/lib/email-theme";
 import { MAX_AUTHOR_BIO_LENGTH, MAX_DESCRIPTION_LENGTH } from "@/lib/newsletters";
 import { sendWelcomeTestEmail } from "@/lib/sending";
 import { MAX_FOOTER_SOCIAL_TEXT_LENGTH, parseSocialLinks } from "@/lib/social";
+import { getLanguage } from "@/lib/subscriber-strings";
 import { parseUtmDomains } from "@/lib/utm";
 import Newsletter from "@/models/Newsletter";
 
@@ -45,6 +46,7 @@ function readNewsletter(formData) {
 		replyTo: readText(formData, "replyTo").toLowerCase(),
 		postalAddress: readText(formData, "postalAddress"),
 		archiveEnabled: formData.get("archiveEnabled") === "on",
+		language: getLanguage({ language: formData.get("language") }),
 		description: readText(formData, "description"),
 		author: { bio: readText(formData, "authorBio"), imageUrl: readText(formData, "authorImageUrl") },
 		socialLinks: parseSocialLinks(formData.get("socialLinks")),
