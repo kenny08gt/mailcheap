@@ -5,9 +5,11 @@ import { HeartHandshake, Link2Off, Loader2, MailCheck } from "lucide-react";
 import { keepSending } from "@/app/keep/actions";
 import CardNotice from "@/components/CardNotice";
 import { Button } from "@/components/ui/button";
+import { getSubscriberStrings } from "@/lib/subscriber-strings";
 
 // Link scanners open the page without submitting forms, so only a person's browser says yes.
-export default function FormKeep({ token, newsletterName, archiveUrl }) {
+export default function FormKeep({ token, language, newsletterName, archiveUrl }) {
+	const strings = getSubscriberStrings(language).keep;
 	const [state, action, isPending] = useActionState(keepSending.bind(null, token), null);
 	const formRef = useRef(null);
 
@@ -17,11 +19,11 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 
 	if (state?.ok) {
 		return (
-			<CardNotice icon={MailCheck} tone="success" title={`Seguirás recibiendo ${newsletterName}`}>
-				Gracias por avisarnos. El próximo envío llegará a tu bandeja.
+			<CardNotice icon={MailCheck} tone="success" title={strings.doneTitle(newsletterName)}>
+				{strings.done}
 				{archiveUrl && (
 					<Button asChild size="lg" variant="outline" className="mt-6 w-full">
-						<a href={archiveUrl}>Ver envíos anteriores</a>
+						<a href={archiveUrl}>{strings.archive}</a>
 					</Button>
 				)}
 			</CardNotice>
@@ -30,11 +32,11 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 
 	if (state?.error === "invalid") {
 		return (
-			<CardNotice icon={Link2Off} title="Este enlace no funciona">
-				Puede que tenga más de 90 días, o cancelaste tu suscripción. Suscríbete de nuevo para recibir {newsletterName}.
+			<CardNotice icon={Link2Off} title={getSubscriberStrings(language).brokenLinkTitle}>
+				{strings.invalid(newsletterName)}
 				{archiveUrl && (
 					<Button asChild size="lg" variant="outline" className="mt-6 w-full">
-						<a href={archiveUrl}>Suscribirme de nuevo</a>
+						<a href={archiveUrl}>{strings.resubscribe}</a>
 					</Button>
 				)}
 			</CardNotice>
@@ -45,14 +47,12 @@ export default function FormKeep({ token, newsletterName, archiveUrl }) {
 		<CardNotice
 			icon={isPending ? Loader2 : HeartHandshake}
 			spin={isPending}
-			title={`¿Seguir recibiendo ${newsletterName}?`}
+			title={strings.title(newsletterName)}
 		>
-			{state?.error === "busy"
-				? "Demasiados clics desde tu red. Inténtalo de nuevo en unos minutos."
-				: "Un clic y te lo seguimos enviando."}
+			{state?.error === "busy" ? strings.busy : strings.body}
 			<form ref={formRef} action={action} className="mt-6">
 				<Button type="submit" size="lg" disabled={isPending} className="w-full">
-					{isPending ? "Guardando…" : "Sí, sigan enviándolo"}
+					{isPending ? strings.pending : strings.button}
 				</Button>
 			</form>
 		</CardNotice>

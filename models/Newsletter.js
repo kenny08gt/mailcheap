@@ -10,6 +10,8 @@ const newsletterSchema = new mongoose.Schema(
 		replyTo: { type: String, lowercase: true, trim: true },
 		postalAddress: { type: String, trim: true },
 		archiveEnabled: { type: Boolean, default: false },
+		// What subscribers read on the confirm and unsubscribe pages and in the built-in confirmation email.
+		language: { type: String, enum: ["es", "en"], default: "es" },
 		description: { type: String, trim: true },
 		socialLinks: [{ type: String, trim: true }],
 		// The email footer shows the known social links as icons under this line (lib/social.js).
